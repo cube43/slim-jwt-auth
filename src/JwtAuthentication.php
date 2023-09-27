@@ -149,16 +149,13 @@ final class JwtAuthentication implements MiddlewareInterface
     private function decodeToken(string $token): JwtDecodedToken
     {
         try {
-            $decoded = JWT::decode(
-                $token,
-                $this->options->secret->__invoke($this->options->algorithm),
-            );
-
-            return new JwtDecodedToken((array) $decoded, $token);
+            $decoded = JWT::decode($token, $this->options->secret->__invoke($this->options->algorithm));
         } catch (Throwable $exception) {
             $this->logger->warning($exception->getMessage(), [$token]);
 
             throw $exception;
         }
+
+        return new JwtDecodedToken((array) $decoded, $token);
     }
 }

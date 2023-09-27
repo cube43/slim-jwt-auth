@@ -35,8 +35,10 @@ namespace Tuupola\Middleware\JwtAuthentication;
 
 use Psr\Http\Message\ServerRequestInterface;
 
+use function array_filter;
+use function explode;
+use function implode;
 use function preg_match;
-use function preg_replace;
 use function rtrim;
 
 /**
@@ -58,7 +60,7 @@ final class RequestPathRule implements RuleInterface
     public function __invoke(ServerRequestInterface $request): bool
     {
         $uri = '/' . $request->getUri()->getPath();
-        $uri = (string) preg_replace('#/+#', '/', $uri);
+        $uri = '/' . implode('/', array_filter(explode('//', $uri)));
 
         /* If request path is matches ignore should not authenticate. */
         foreach ($this->ignore as $ignore) {

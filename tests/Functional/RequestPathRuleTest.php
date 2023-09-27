@@ -37,8 +37,21 @@ use PHPUnit\Framework\TestCase;
 use Tuupola\Http\Factory\ServerRequestFactory;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
 
+use function hex2bin;
+
 class RequestPathRuleTest extends TestCase
 {
+    public function testWrongUri(): void
+    {
+        $request = (new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'api',
+        );
+
+        $rule = new RequestPathRule();
+        self::assertTrue($rule($request));
+    }
+
     public function testDefaultRule(): void
     {
         $request = (new ServerRequestFactory())->createServerRequest(

@@ -8,11 +8,6 @@ use RuntimeException;
 
 class TokenNotFound extends RuntimeException
 {
-    public function __construct(string $message)
-    {
-        parent::__construct($message);
-    }
-
     public static function create(): self
     {
         return new self('Token not found.');
