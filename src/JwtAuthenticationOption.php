@@ -43,7 +43,7 @@ class JwtAuthenticationOption
         public readonly JwtAuthentificationError $error,
         RuleInterface ...$rules
     ) {
-        /** @var SplStack<RuleInterface> */
+        /** @var SplStack<RuleInterface> $splStack */
         $splStack = new SplStack();
         /* Add the rules */
         foreach ($rules as $callable) {
@@ -169,7 +169,6 @@ class JwtAuthenticationOption
     /**
      * Set the before handler.
      */
-
     public function withBefore(JwtAuthentificationBefore $before): self
     {
         return new self(

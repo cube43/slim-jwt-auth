@@ -63,7 +63,7 @@ final class RequestPathRule implements RuleInterface
         /* If request path is matches ignore should not authenticate. */
         foreach ($this->ignore as $ignore) {
             $ignore = rtrim($ignore, '/');
-            if (! ! preg_match("@^{$ignore}(/.*)?$@", (string) $uri)) {
+            if (! ! preg_match('@^' . $ignore . '(/.*)?$@', (string) $uri)) {
                 return false;
             }
         }
@@ -71,7 +71,7 @@ final class RequestPathRule implements RuleInterface
         /* Otherwise check if path matches and we should authenticate. */
         foreach ($this->path as $path) {
             $path = rtrim($path, '/');
-            if (! ! preg_match("@^{$path}(/.*)?$@", (string) $uri)) {
+            if (! ! preg_match('@^' . $path . '(/.*)?$@', (string) $uri)) {
                 return true;
             }
         }
