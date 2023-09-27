@@ -19,7 +19,7 @@ For example implementation see [Slim API Skeleton](https://github.com/tuupola/sl
 Install latest version using [composer](https://getcomposer.org/).
 
 ``` bash
-$ composer require tuupola/slim-jwt-auth
+composer require tuupola/slim-jwt-auth
 ```
 
 If using Apache add the following to the `.htaccess` file. Otherwise PHP wont have access to `Authorization: Bearer` header.
@@ -56,8 +56,8 @@ When a request is made, the middleware tries to validate and decode the token. I
 
 Validation errors are triggered when the token has been tampered with or the token has expired. For all possible validation errors, see [JWT library](https://github.com/firebase/php-jwt/blob/master/src/JWT.php#L60-L138) source.
 
-
 ## Optional parameters
+
 ### Path
 
 The optional `path` parameter allows you to specify the protected part of your website. It can be either a string or an array. You do not need to specify each URL. Instead think of `path` setting as a folder. In the example below everything starting with `/api` will be authenticated. If you do not define `path` all routes will be protected.
@@ -195,7 +195,6 @@ $app->add(new Tuupola\Middleware\JwtAuthentication([
 
 After function is called only when authentication succeeds and after the incoming middleware stack has been called. You can use this to alter the response before passing it next outgoing middleware in the stack. If it returns anything else than `Psr\Http\Message\ResponseInterface` the return value will be ignored.
 
-
 ``` php
 $app = new Slim\App;
 
@@ -317,11 +316,11 @@ $app->delete("/item/{id}", function ($request, $response, $arguments) {
 You can run tests either manually or automatically on every code change. Automatic tests require [entr](http://entrproject.org/) to work.
 
 ``` bash
-$ make test
+make test
 ```
 
 ``` bash
-$ brew install entr
+brew install entr
 $ make watch
 ```
 
@@ -329,9 +328,9 @@ $ make watch
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
-## Security
+## Security report
 
-If you discover any security related issues, please email tuupola@appelsiini.net instead of using the issue tracker.
+If you discover any security related issues, please email <tuupola@appelsiini.net> instead of using the issue tracker.
 
 ## License
 

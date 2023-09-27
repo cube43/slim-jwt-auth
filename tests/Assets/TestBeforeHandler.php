@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
 
 Copyright (c) 2015-2022 Mika Tuupola
@@ -24,35 +26,18 @@ SOFTWARE.
 
 */
 
-/**
- * @see       https://github.com/tuupola/slim-jwt-auth
- * @license   https://www.opensource.org/licenses/mit-license.php
- */
+/** @see       https://github.com/tuupola/slim-jwt-auth */
 
-namespace Tuupola\Middleware;
+namespace Tuupola\Tests\Middleware\Assets;
 
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tuupola\Middleware\JwtAuthentificationBefore;
+use Tuupola\Middleware\JwtDecodedToken;
 
-class TestErrorHandler
+class TestBeforeHandler implements JwtAuthentificationBefore
 {
-    public function __invoke(
-        ResponseInterface $response,
-        array $arguments
-    ) {
-        $response->getBody()->write(self::class);
-        return $response
-            ->withStatus(402)
-            ->withHeader("X-Foo", "Bar");
-    }
-
-    public static function error(
-        ResponseInterface $response,
-        array $arguments
-    ) {
-        $response->getBody()->write(self::class);
-        return $response
-            ->withStatus(418)
-            ->withHeader("X-Bar", "Foo");
+    public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
+    {
+        return $request->withAttribute('test', 'invoke');
     }
 }
