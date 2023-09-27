@@ -22,11 +22,7 @@ class JwtAuthenticationOption
      */
     public readonly SplStack $rules;
 
-    /**
-     * @param string[] $relaxed
-     * @param string[] $path
-     * @param string[] $ignore
-     */
+    /** @param string[] $relaxed */
     private function __construct(
         public readonly Secret $secret,
         public readonly bool $secure,
@@ -36,8 +32,6 @@ class JwtAuthenticationOption
         public readonly string $regexp,
         public readonly string $cookie,
         public readonly string $attribute,
-        public readonly array $path,
-        public readonly array $ignore,
         public readonly JwtAuthentificationBefore $before,
         public readonly JwtAuthentificationAfter $after,
         public readonly JwtAuthentificationError $error,
@@ -64,8 +58,6 @@ class JwtAuthenticationOption
             '/Bearer\s+(.*)$/i',
             'token',
             'token',
-            ['/'],
-            [],
             new NullBefore(),
             new NullAfter(),
             new NullError(),
@@ -88,8 +80,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -111,8 +101,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -134,8 +122,6 @@ class JwtAuthenticationOption
             $regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -157,8 +143,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -180,8 +164,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $before,
             $this->after,
             $this->error,
@@ -203,8 +185,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $after,
             $this->error,
@@ -226,8 +206,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -249,61 +227,9 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $error,
-            ...$this->rules,
-        );
-    }
-
-    /**
-     * Set path where middleware should bind to.
-     *
-     * @param string[] $path
-     */
-    public function withPath(array $path): self
-    {
-        return new self(
-            $this->secret,
-            $this->secure,
-            $this->relaxed,
-            $this->algorithm,
-            $this->header,
-            $this->regexp,
-            $this->cookie,
-            $this->attribute,
-            $path,
-            $this->ignore,
-            $this->before,
-            $this->after,
-            $this->error,
-            ...$this->rules,
-        );
-    }
-
-    /**
-     * Set path which middleware ignores.
-     *
-     * @param string[] $ignore
-     */
-    public function withIgnore(array $ignore): self
-    {
-        return new self(
-            $this->secret,
-            $this->secure,
-            $this->relaxed,
-            $this->algorithm,
-            $this->header,
-            $this->regexp,
-            $this->cookie,
-            $this->attribute,
-            $this->path,
-            $ignore,
-            $this->before,
-            $this->after,
-            $this->error,
             ...$this->rules,
         );
     }
@@ -322,8 +248,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -345,8 +269,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -370,8 +292,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -393,8 +313,6 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
@@ -416,12 +334,10 @@ class JwtAuthenticationOption
             $this->regexp,
             $this->cookie,
             $this->attribute,
-            $this->path,
-            $this->ignore,
             $this->before,
             $this->after,
             $this->error,
-            ...[...(array) $this->rules, $callable],
+            ...[...$this->rules, $callable],
         );
     }
 }

@@ -48,7 +48,7 @@ class RequestMethodRuleTest extends TestCase
 
         $rule = new RequestMethodRule();
 
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
     }
 
     public function testShouldAuthenticatePost(): void
@@ -60,7 +60,7 @@ class RequestMethodRuleTest extends TestCase
 
         $rule = new RequestMethodRule();
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
     }
 
     public function testShouldAuthenticateGet(): void
@@ -72,7 +72,7 @@ class RequestMethodRuleTest extends TestCase
 
         $rule = new RequestMethodRule();
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
     }
 
     public function testShouldConfigureIgnore(): void
@@ -84,6 +84,6 @@ class RequestMethodRuleTest extends TestCase
 
         $rule = new RequestMethodRule(['GET']);
 
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
     }
 }

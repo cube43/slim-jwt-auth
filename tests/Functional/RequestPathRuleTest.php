@@ -39,6 +39,28 @@ use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
 
 class RequestPathRuleTest extends TestCase
 {
+    public function testDefaultRule(): void
+    {
+        $request = (new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'https://example.com/api',
+        );
+
+        $rule = new RequestPathRule();
+        self::assertTrue($rule($request));
+    }
+
+    public function testIgnoreWithSlashesAtEnd(): void
+    {
+        $request = (new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'https://example.com/api',
+        );
+
+        $rule = new RequestPathRule(['/'], ['/api/']);
+        self::assertFalse($rule($request));
+    }
+
     public function testShouldAcceptArrayAndStringAsPath(): void
     {
         $request = (new ServerRequestFactory())->createServerRequest(
@@ -47,10 +69,10 @@ class RequestPathRuleTest extends TestCase
         );
 
         $rule = new RequestPathRule(['/api']);
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $rule = new RequestPathRule(['/api', '/foo']);
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
     }
 
     public function testShouldAuthenticateEverything(): void
@@ -61,14 +83,14 @@ class RequestPathRuleTest extends TestCase
         );
 
         $rule = new RequestPathRule(['/']);
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com/api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
     }
 
     public function testShouldAuthenticateOnlyApi(): void
@@ -79,14 +101,14 @@ class RequestPathRuleTest extends TestCase
         );
 
         $rule = new RequestPathRule(['/api']);
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com/api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
     }
 
     public function testShouldIgnoreLogin(): void
@@ -97,14 +119,14 @@ class RequestPathRuleTest extends TestCase
         );
 
         $rule = new RequestPathRule(['/api'], ['/api/login']);
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com/login',
         );
 
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
     }
 
     public function testShouldAuthenticateCreateAndList(): void
@@ -116,7 +138,7 @@ class RequestPathRuleTest extends TestCase
 
         /* Should not authenticate */
         $rule = new RequestPathRule(['/api/create', '/api/list']);
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
 
         /* Should authenticate */
         $request = (new ServerRequestFactory())->createServerRequest(
@@ -124,7 +146,7 @@ class RequestPathRuleTest extends TestCase
             'https://example.com/api/create',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         /* Should authenticate */
         $request = (new ServerRequestFactory())->createServerRequest(
@@ -132,7 +154,7 @@ class RequestPathRuleTest extends TestCase
             'https://example.com/api/list',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         /* Should not authenticate */
         $request = (new ServerRequestFactory())->createServerRequest(
@@ -140,7 +162,7 @@ class RequestPathRuleTest extends TestCase
             'https://example.com/api/ping',
         );
 
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
     }
 
     public function testShouldAuthenticateRegexp(): void
@@ -152,7 +174,7 @@ class RequestPathRuleTest extends TestCase
 
         /* Should authenticate */
         $rule = new RequestPathRule(['/api/products/(\d*)/tickets']);
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         /* Should not authenticate */
         $request = (new ServerRequestFactory())->createServerRequest(
@@ -160,7 +182,7 @@ class RequestPathRuleTest extends TestCase
             'https://example.com/api/products/xxx/tickets',
         );
 
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
     }
 
     public function testBug50ShouldAuthenticateMultipleSlashes(): void
@@ -171,41 +193,41 @@ class RequestPathRuleTest extends TestCase
         );
 
         $rule = new RequestPathRule(['/v1/api']);
-        $this->assertFalse($rule($request));
+        self::assertFalse($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com/v1/api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com/v1//api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com/v1//////api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com//v1/api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
 
         $request = (new ServerRequestFactory())->createServerRequest(
             'GET',
             'https://example.com//////v1/api',
         );
 
-        $this->assertTrue($rule($request));
+        self::assertTrue($rule($request));
     }
 }

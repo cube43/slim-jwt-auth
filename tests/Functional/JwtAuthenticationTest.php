@@ -38,6 +38,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
 use Throwable;
 use Tuupola\Http\Factory\ResponseFactory;
 use Tuupola\Http\Factory\ServerRequestFactory;
@@ -103,17 +104,21 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+        $logger->expects(self::once())->method('debug')->with('Token not found', []);
+
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldReturn200WithTokenFromHeader(): void
@@ -129,17 +134,21 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))->withHeader('X-Token');
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn200WithTokenFromHeaderWithCustomRegexp(): void
@@ -155,19 +164,23 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
             ->withHeader('X-Token')
             ->withRegexp('/(.*)/');
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn200WithTokenFromCookie(): void
@@ -183,18 +196,22 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+        $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
+
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
             ->withCookie('nekot');
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn200WithTokenFromBearerCookie(): void
@@ -210,18 +227,22 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+        $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
+
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
             ->withCookie('nekot');
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn200WithSecretArray(): void
@@ -248,8 +269,8 @@ class JwtAuthenticationTest extends TestCase
         ]);
 
         $response = $collection->dispatch($request, $default);
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn401WithSecretArray(): void
@@ -265,19 +286,23 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('warning')->with('"kid" invalid, unable to lookup correct key', [self::$betaToken]);
+        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+
         $option = JwtAuthenticationOption::create(new ArrayOfSecret([
             'xxxx' => 'supersecretkeyyoushouldnotcommittogithub',
             'yyyy' => 'anothersecretkeyfornevertocommittogithub',
         ]));
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldReturn200WithSecretArrayAccess(): void
@@ -305,8 +330,8 @@ class JwtAuthenticationTest extends TestCase
         ]);
 
         $response = $collection->dispatch($request, $default);
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn401WithSecretArrayAccess(): void
@@ -334,8 +359,8 @@ class JwtAuthenticationTest extends TestCase
         ]);
 
         $response = $collection->dispatch($request, $default);
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldAlterResponseWithAnonymousAfter(): void
@@ -366,8 +391,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('plants crave', (string) $response->getHeaderLine('X-Brawndo'));
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('plants crave', (string) $response->getHeaderLine('X-Brawndo'));
     }
 
     public function testShouldAlterResponseWithInvokableAfter(): void
@@ -393,8 +418,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals(
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals(
             'plants crave',
             (string) $response->getHeaderLine('X-Brawndo'),
         );
@@ -423,8 +448,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldReturn200WithOptions(): void
@@ -449,8 +474,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn400WithInvalidToken(): void
@@ -475,8 +500,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldReturn400WithExpiredToken(): void
@@ -501,8 +526,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldReturn200WithoutTokenWithPath(): void
@@ -518,7 +543,6 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
-            ->withPath(['/api', '/foo'])
             ->addRule(new RequestPathRule(['/api', '/foo'], []));
 
         $collection = new MiddlewareCollection([
@@ -528,8 +552,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn200WithoutTokenWithIgnore(): void
@@ -545,8 +569,6 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
-            ->withPath(['/api', '/foo'])
-            ->withIgnore(['/api/ping'])
             ->addRule(new RequestPathRule(['/api', '/foo'], ['/api/ping']));
 
         $collection = new MiddlewareCollection([
@@ -556,14 +578,12 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldNotAllowInsecure(): void
     {
-        $this->expectException('RuntimeException');
-
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'http://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
@@ -582,7 +602,9 @@ class JwtAuthenticationTest extends TestCase
             new JwtAuthentificationAcl($option),
         ]);
 
-        $response = $collection->dispatch($request, $default);
+        self::expectException('RuntimeException');
+        self::expectExceptionMessage('Insecure use of middleware over HTTP denied by configuration');
+        $collection->dispatch($request, $default);
     }
 
     public function testShouldAllowInsecure(): void
@@ -608,8 +630,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldRelaxInsecureInLocalhost(): void
@@ -634,8 +656,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldRelaxInsecureInExampleCom(): void
@@ -661,8 +683,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldAttachToken(): void
@@ -691,8 +713,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Acme Toothpics Ltd', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Acme Toothpics Ltd', $response->getBody());
     }
 
     public function testShouldAttachCustomToken(): void
@@ -724,8 +746,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Acme Toothpics Ltd', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Acme Toothpics Ltd', $response->getBody());
     }
 
     public function testShouldCallAfterWithProperArguments(): void
@@ -756,10 +778,10 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
-        $this->assertJsonStringEqualsJsonString((string) json_encode(self::$acmeTokenArray), $response->getHeaderLine('decoded'));
-        $this->assertEquals(self::$acmeToken, $response->getHeaderLine('token'));
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
+        self::assertJsonStringEqualsJsonString((string) json_encode(self::$acmeTokenArray), $response->getHeaderLine('decoded'));
+        self::assertEquals(self::$acmeToken, $response->getHeaderLine('token'));
     }
 
     public function testShouldCallBeforeWithProperArguments(): void
@@ -794,8 +816,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success' . json_encode(self::$acmeTokenArray) . self::$acmeToken, $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success' . json_encode(self::$acmeTokenArray) . self::$acmeToken, $response->getBody());
     }
 
     public function testShouldCallAnonymousErrorFunction(): void
@@ -828,9 +850,9 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('Plants', $response->getHeaderLine('X-Electrolytes'));
-        $this->assertEquals('error', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('Plants', $response->getHeaderLine('X-Electrolytes'));
+        self::assertEquals('error', $response->getBody());
     }
 
     public function testShouldCallInvokableErrorClass(): void
@@ -855,9 +877,9 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(402, $response->getStatusCode());
-        $this->assertEquals('Bar', $response->getHeaderLine('X-Foo'));
-        $this->assertEquals(TestErrorHandler::class, $response->getBody());
+        self::assertEquals(402, $response->getStatusCode());
+        self::assertEquals('Bar', $response->getHeaderLine('X-Foo'));
+        self::assertEquals(TestErrorHandler::class, $response->getBody());
     }
 
     public function testShouldCallErrorAndModifyBody(): void
@@ -889,8 +911,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('Error', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('Error', $response->getBody());
     }
 
     public function testShouldAllowUnauthenticatedHttp(): void
@@ -906,7 +928,6 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
-            ->withPath(['/api', '/bar'])
             ->addRule(new RequestPathRule(['/api', '/foo'], []));
 
         $collection = new MiddlewareCollection([
@@ -915,8 +936,8 @@ class JwtAuthenticationTest extends TestCase
         ]);
         $response   = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldReturn401FromAfter(): void
@@ -949,8 +970,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
     }
 
     public function testShouldModifyRequestUsingAnonymousBefore(): void
@@ -982,8 +1003,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('test', (string) $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('test', (string) $response->getBody());
     }
 
     public function testShouldModifyRequestUsingInvokableBefore(): void
@@ -1010,8 +1031,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('invoke', (string) $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('invoke', (string) $response->getBody());
     }
 
     public function testShouldHandleRulesArrayBug84(): void
@@ -1039,16 +1060,16 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
 
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api/login');
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldHandleDefaultPathBug118(): void
@@ -1064,7 +1085,6 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
-            ->withIgnore(['/api/login'])
             ->addRule(new RequestPathRule(['/'], ['/api/login']));
 
         $collection = new MiddlewareCollection([
@@ -1074,16 +1094,16 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
 
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api/login');
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldBindToMiddleware(): void
@@ -1122,8 +1142,8 @@ class JwtAuthenticationTest extends TestCase
         ]);
 
         $response = $collection->dispatch($request, $default);
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('im beforeim after', (string) $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('im beforeim after', (string) $response->getBody());
     }
 
     public function testShouldHandlePsr7(): void
@@ -1147,8 +1167,8 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $auth($request, $response, $next);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 
     public function testShouldHaveUriInErrorHandlerIssue96(): void
@@ -1178,9 +1198,9 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(401, $response->getStatusCode());
-        $this->assertEquals('', $response->getBody());
-        $this->assertEquals('https://example.com/api/foo?bar=pop', $response->getHeaderLine('X-Uri'));
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $response->getBody());
+        self::assertEquals('https://example.com/api/foo?bar=pop', $response->getHeaderLine('X-Uri'));
     }
 
     public function testShouldUseCookieIfHeaderMissingIssue156(): void
@@ -1207,7 +1227,7 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('Success', $response->getBody());
+        self::assertEquals(200, $response->getStatusCode());
+        self::assertEquals('Success', $response->getBody());
     }
 }
