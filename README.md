@@ -6,7 +6,6 @@
 [![Latest Stable Version](https://poser.pugx.org/cube43/slim-jwt-auth/v/stable)](https://packagist.org/packages/cube43/slim-jwt-auth)
 [![License](https://poser.pugx.org/cube43/slim-jwt-auth/license)](https://packagist.org/packages/cube43/slim-jwt-auth)
 
-
 ## Introduction
 
 This repository is a fork of the [Original Project](https://github.com/tuupola/slim-jwt-auth), and it is important to note that the primary purpose of this fork is not to replace or compete with the original project. Instead, this fork serves as a testing ground to explore various possibilities, experiment with new ideas, and gain a deeper understanding of the original project's capabilities.
@@ -15,9 +14,9 @@ This repository is a fork of the [Original Project](https://github.com/tuupola/s
 
 The objectives of this fork are as follows:
 
-1. **Exploration:** This fork allows us to explore the original project's functionality, features, and codebase more extensively. By doing so, we can identify areas for improvement or optimization.
+- **Exploration:** This fork allows us to explore the original project's functionality, features, and codebase more extensively. By doing so, we can identify areas for improvement or optimization.
 
-2. **Experimentation:** We will use this fork to conduct experiments, test different configurations, and potentially implement new features or modifications. These changes are not intended for production use but rather to gain insights and experience.
+- **Experimentation:** We will use this fork to conduct experiments, test different configurations, and potentially implement new features or modifications. These changes are not intended for production use but rather to gain insights and experience.
 
 ## Contributions
 
@@ -29,12 +28,11 @@ Contributions to this fork are welcome and encouraged. However, please keep in m
 
 To get started with this fork, you can follow these steps:
 
-1. **Clone the Repository:**
+- **Clone the Repository:**
 
 `git clone https://github.com/cube43/slim-jwt-auth`
 
-
-2. **Explore and Experiment:**
+- **Explore and Experiment:**
 
 Feel free to explore the codebase, make changes, and experiment with different configurations. However, please ensure that any modifications you make do not negatively impact the original project.
 
