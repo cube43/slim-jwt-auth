@@ -33,7 +33,9 @@ SOFTWARE.
 
 namespace Tuupola\Middleware;
 
-use Firebase\JWT\JWT;
+use Lcobucci\JWT\Encoding\JoseEncoder;
+use Lcobucci\JWT\Parser as ParserInterface;
+use Lcobucci\JWT\Token\Parser;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -43,21 +45,23 @@ use Psr\Log\NullLogger;
 use RuntimeException;
 use Throwable;
 
-use function array_key_exists;
 use function in_array;
-use function preg_match;
 use function sprintf;
 use function strtoupper;
 
 final class JwtAuthentication implements MiddlewareInterface
 {
-    private readonly LoggerInterface $logger;
+    private readonly FetchToken $fetchToken;
+    private readonly DecodeToken $decodeToken;
 
     public function __construct(
         private readonly JwtAuthenticationOption $options,
-        ?LoggerInterface $logger = null
+        ?LoggerInterface $logger = null,
+        ?ParserInterface $parser = null
     ) {
-        $this->logger = $logger ?? new NullLogger();
+        $logger          ??= new NullLogger();
+        $this->fetchToken  = new FetchToken($options, $logger);
+        $this->decodeToken = new DecodeToken($parser ?? new Parser(new JoseEncoder()), $logger);
     }
 
     public function __invoke(
@@ -85,13 +89,13 @@ final class JwtAuthentication implements MiddlewareInterface
         }
 
         try {
-            $token = $this->fetchToken($request);
+            $token = $this->fetchToken->__invoke($request);
         } catch (TokenNotFound) {
             return $handler->handle($request);
         }
 
         try {
-            $jwtDecodedToken = $this->decodeToken($token);
+            $jwtDecodedToken = $this->decodeToken->__invoke($token);
         } catch (Throwable) {
             return $handler->handle($request);
         }
@@ -107,55 +111,5 @@ final class JwtAuthentication implements MiddlewareInterface
 
         /* Modify $response before returning. */
         return $this->options->after->__invoke($response, $jwtDecodedToken);
-    }
-
-    /**
-     * Fetch the access token.
-     */
-    private function fetchToken(ServerRequestInterface $request): string
-    {
-        /* Check for token in header. */
-        $header = $request->getHeaderLine($this->options->header);
-
-        if (empty($header) === false) {
-            if (preg_match($this->options->regexp, $header, $matches)) {
-                $this->logger->debug('Using token from request header');
-
-                return $matches[1];
-            }
-        }
-
-        /* Token not found in header try a cookie. */
-        $cookieParams = $request->getCookieParams();
-
-        if (array_key_exists($this->options->cookie, $cookieParams)) {
-            $this->logger->debug('Using token from cookie');
-            if (preg_match($this->options->regexp, $cookieParams[$this->options->cookie], $matches)) {
-                return $matches[1];
-            }
-
-            return $cookieParams[$this->options->cookie];
-        }
-
-        /* If everything fails log and throw. */
-        $this->logger->debug('Token not found');
-
-        throw TokenNotFound::create();
-    }
-
-    /**
-     * Decode the token.
-     */
-    private function decodeToken(string $token): JwtDecodedToken
-    {
-        try {
-            $decoded = JWT::decode($token, $this->options->secret->__invoke($this->options->algorithm));
-        } catch (Throwable $exception) {
-            $this->logger->warning($exception->getMessage(), [$token]);
-
-            throw $exception;
-        }
-
-        return new JwtDecodedToken((array) $decoded, $token);
     }
 }

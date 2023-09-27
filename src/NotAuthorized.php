@@ -8,4 +8,8 @@ use RuntimeException;
 
 class NotAuthorized extends RuntimeException
 {
+    public static function create(): self
+    {
+        return new self('Not authorized.');
+    }
 }

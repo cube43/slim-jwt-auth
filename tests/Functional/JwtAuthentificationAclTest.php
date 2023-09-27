@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace Functional;
 
+use Lcobucci\JWT\Signer\Key\InMemory;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tuupola\Http\Factory\ResponseFactory;
 use Tuupola\Http\Factory\ServerRequestFactory;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
-use Tuupola\Middleware\JwtAuthentication\StringSecret;
 use Tuupola\Middleware\JwtAuthenticationOption;
 use Tuupola\Middleware\JwtAuthentificationAcl;
 
+/** @psalm-suppress UnusedClass */
 class JwtAuthentificationAclTest extends TestCase
 {
     public function testShouldHandlePsr7(): void
@@ -23,12 +24,12 @@ class JwtAuthentificationAclTest extends TestCase
 
         $response = (new ResponseFactory())->createResponse();
 
-        $option =                 JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withRules(new RequestPathRule(['/'], ['/api']));
 
         $auth = new JwtAuthentificationAcl($option);
 
-        $next = static function (ServerRequestInterface $request, ResponseInterface $response) {
+        $next = static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
             $response->getBody()->write('Success');
 
             return $response;

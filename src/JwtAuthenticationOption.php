@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tuupola\Middleware;
 
+use Lcobucci\JWT\Signer;
+use Lcobucci\JWT\Signer\Key;
 use SplStack;
 use Tuupola\Middleware\JwtAuthentication\NullAfter;
 use Tuupola\Middleware\JwtAuthentication\NullBefore;
@@ -11,7 +13,6 @@ use Tuupola\Middleware\JwtAuthentication\NullError;
 use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
 use Tuupola\Middleware\JwtAuthentication\RuleInterface;
-use Tuupola\Middleware\JwtAuthentication\Secret;
 
 class JwtAuthenticationOption
 {
@@ -22,12 +23,15 @@ class JwtAuthenticationOption
      */
     public readonly SplStack $rules;
 
-    /** @param string[] $relaxed */
+    /**
+     * @param string[]         $relaxed
+     * @param non-empty-string $regexp
+     */
     private function __construct(
-        public readonly Secret $secret,
+        public readonly Key $secret,
         public readonly bool $secure,
         public readonly array $relaxed,
-        public readonly string $algorithm,
+        public readonly Signer $algorithm,
         public readonly string $header,
         public readonly string $regexp,
         public readonly string $cookie,
@@ -47,13 +51,13 @@ class JwtAuthenticationOption
         $this->rules = $splStack;
     }
 
-    public static function create(Secret $secret): self
+    public static function create(Key $secret): self
     {
         return new self(
             $secret,
             true,
             ['localhost', '127.0.0.1'],
-            'HS256',
+            new Signer\Hmac\Sha256(),
             'Authorization',
             '/Bearer\s+(.*)$/i',
             'token',
@@ -110,6 +114,8 @@ class JwtAuthenticationOption
 
     /**
      * Set the regexp used to extract token from header or environment.
+     *
+     * @param non-empty-string $regexp
      */
     public function withRegexp(string $regexp): self
     {
@@ -132,7 +138,7 @@ class JwtAuthenticationOption
     /**
      * Set the allowed algorithm
      */
-    public function withAlgorithm(string $algorithm): self
+    public function withAlgorithm(Signer $algorithm): self
     {
         return new self(
             $this->secret,
@@ -302,7 +308,7 @@ class JwtAuthenticationOption
     /**
      * Set the secret key.
      */
-    public function withSecret(Secret $secret): self
+    public function withSecret(Key $secret): self
     {
         return new self(
             $secret,

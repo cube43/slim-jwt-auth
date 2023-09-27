@@ -37,6 +37,7 @@ use PHPUnit\Framework\TestCase;
 use Tuupola\Http\Factory\ServerRequestFactory;
 use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
 
+/** @psalm-suppress UnusedClass */
 class RequestMethodRuleTest extends TestCase
 {
     public function testShouldNotAuthenticateOptions(): void
