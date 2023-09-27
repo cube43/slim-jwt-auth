@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tuupola\Middleware\JwtAuthentication;
 
+use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ServerRequestInterface;
 use Tuupola\Middleware\JwtAuthentificationBefore;
-use Tuupola\Middleware\JwtDecodedToken;
 
 class NullBefore implements JwtAuthentificationBefore
 {
-    public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
+    public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
     {
         return $request;
     }

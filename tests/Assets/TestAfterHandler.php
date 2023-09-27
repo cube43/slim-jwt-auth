@@ -30,13 +30,13 @@ SOFTWARE.
 
 namespace Tuupola\Tests\Middleware\Assets;
 
+use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ResponseInterface;
 use Tuupola\Middleware\JwtAuthentificationAfter;
-use Tuupola\Middleware\JwtDecodedToken;
 
 class TestAfterHandler implements JwtAuthentificationAfter
 {
-    public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
+    public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
     {
         $response->getBody()->write(self::class);
 

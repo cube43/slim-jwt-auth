@@ -30,13 +30,13 @@ SOFTWARE.
 
 namespace Tuupola\Tests\Middleware\Assets;
 
+use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ServerRequestInterface;
 use Tuupola\Middleware\JwtAuthentificationBefore;
-use Tuupola\Middleware\JwtDecodedToken;
 
 class TestBeforeHandler implements JwtAuthentificationBefore
 {
-    public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
+    public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
     {
         return $request->withAttribute('test', 'invoke');
     }

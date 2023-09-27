@@ -37,6 +37,7 @@ use Equip\Dispatch\MiddlewareCollection;
 use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token;
+use Lcobucci\JWT\Token\Plain;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -54,7 +55,6 @@ use Tuupola\Middleware\JwtAuthentificationAcl;
 use Tuupola\Middleware\JwtAuthentificationAfter;
 use Tuupola\Middleware\JwtAuthentificationBefore;
 use Tuupola\Middleware\JwtAuthentificationError;
-use Tuupola\Middleware\JwtDecodedToken;
 use Tuupola\Tests\Middleware\Assets\TestAfterHandler;
 use Tuupola\Tests\Middleware\Assets\TestBeforeHandler;
 use Tuupola\Tests\Middleware\Assets\TestErrorHandler;
@@ -278,7 +278,7 @@ class JwtAuthenticationTest extends TestCase
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
-                public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
+                public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                     return $response->withHeader('X-Brawndo', 'plants crave');
                 }
@@ -604,10 +604,10 @@ class JwtAuthenticationTest extends TestCase
         $default = static function (ServerRequestInterface $request): ResponseInterface {
             $decodedToken = $request->getAttribute('token');
 
-            assert($decodedToken instanceof JwtDecodedToken);
+            assert($decodedToken instanceof Plain);
 
             $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write((string) json_encode($decodedToken->payload->claims()->get('iss')));
+            $response->getBody()->write((string) json_encode($decodedToken->claims()->get('iss')));
             $response->getBody()->rewind();
 
             return $response;
@@ -638,10 +638,10 @@ class JwtAuthenticationTest extends TestCase
         $default = static function (ServerRequestInterface $request): ResponseInterface {
             $decodedToken = $request->getAttribute('nekot');
 
-            assert($decodedToken instanceof JwtDecodedToken);
+            assert($decodedToken instanceof Plain);
 
             $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write((string) json_encode($decodedToken->payload->claims()->get('iss')));
+            $response->getBody()->write((string) json_encode($decodedToken->claims()->get('iss')));
 
             return $response;
         };
@@ -678,9 +678,9 @@ class JwtAuthenticationTest extends TestCase
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
-                public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
+                public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
-                    return $response->withHeader('decoded', (string) json_encode($jwtDecodedToken->payload->claims()->get('iss')))->withHeader('token', $jwtDecodedToken->token);
+                    return $response->withHeader('decoded', (string) json_encode($token->claims()->get('iss')));
                 }
             });
 
@@ -694,7 +694,6 @@ class JwtAuthenticationTest extends TestCase
         self::assertEquals(200, $response->getStatusCode());
         self::assertEquals('Success', $response->getBody());
         self::assertJsonStringEqualsJsonString((string) json_encode(self::$acmeTokenArray['iss']), $response->getHeaderLine('decoded'));
-        self::assertEquals(self::$acmeToken, $response->getHeaderLine('token'));
     }
 
     public function testShouldCallBeforeWithProperArguments(): void
@@ -705,17 +704,16 @@ class JwtAuthenticationTest extends TestCase
 
         $default = static function (ServerRequestInterface $request): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success' . (string) json_encode($request->getAttribute('decoded')) . (string) json_encode($request->getAttribute('token')));
+            $response->getBody()->write('Success' . (string) json_encode($request->getAttribute('decoded')));
 
             return $response;
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withBefore(new class implements JwtAuthentificationBefore {
-                public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
+                public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
                 {
-                    return $request->withAttribute('decoded', (string) json_encode($jwtDecodedToken->payload->claims()->get('iss')))
-                        ->withAttribute('token', $jwtDecodedToken->token);
+                    return $request->withAttribute('decoded', (string) json_encode($token->claims()->get('iss')));
                 }
             });
 
@@ -730,7 +728,7 @@ class JwtAuthenticationTest extends TestCase
 
         $body->rewind();
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Success' . (string) json_encode(json_encode(self::$acmeTokenArray['iss'])) . (string) json_encode(self::$acmeToken), $body->getContents());
+        self::assertEquals('Success' . (string) json_encode(json_encode(self::$acmeTokenArray['iss'])), $body->getContents());
     }
 
     public function testShouldCallAnonymousErrorFunction(): void
@@ -868,7 +866,7 @@ class JwtAuthenticationTest extends TestCase
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
-                public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
+                public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                     return $response
                         ->withBody((new StreamFactory())->createStream())
@@ -905,7 +903,7 @@ class JwtAuthenticationTest extends TestCase
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withBefore(new class implements JwtAuthentificationBefore {
-                public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
+                public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
                 {
                     return $request->withAttribute('test', 'test');
                 }
@@ -1047,7 +1045,7 @@ class JwtAuthenticationTest extends TestCase
 
         $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
-                public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
+                public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                      $response->getBody()->write('im after');
 
@@ -1055,7 +1053,7 @@ class JwtAuthenticationTest extends TestCase
                 }
             })
             ->withBefore(new class implements JwtAuthentificationBefore {
-                public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToke): ServerRequestInterface
+                public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
                 {
                     return $request->withAttribute('before', 'im before');
                 }

@@ -24,7 +24,7 @@ final class DecodeToken
      *
      * @param non-empty-string $token
      */
-    public function __invoke(string $token): JwtDecodedToken
+    public function __invoke(string $token): Plain
     {
         try {
             $tokenDecoded = $this->parser->parse($token);
@@ -42,6 +42,6 @@ final class DecodeToken
             throw $exception;
         }
 
-        return new JwtDecodedToken($tokenDecoded, $token);
+        return $tokenDecoded;
     }
 }
