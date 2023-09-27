@@ -51,7 +51,3 @@ This fork is not intended to replace or compete with the original project. It se
 ## Credits
 
 This fork is maintained by [cube43](https://github.com/cube43).
-
----
-
-**Note:** Please remember to respect the original project's license and terms of use. Use this fork responsibly and ethically, and ensure that your contributions align with the goals and intentions stated in this README.
