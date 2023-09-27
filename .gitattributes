@@ -12,3 +12,4 @@
 /phpstan.neon export-ignore
 /phpcs.xml.dist export-ignore
 /.laminas-ci.json export-ignore
+/generated-token.php export-ignore

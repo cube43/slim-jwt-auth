@@ -33,7 +33,12 @@ SOFTWARE.
 
 namespace Tuupola\Middleware;
 
-use Firebase\JWT\JWT;
+use DateTimeImmutable;
+use Exception;
+use Lcobucci\JWT\Encoding\JoseEncoder;
+use Lcobucci\JWT\Parser as ParserInterface;
+use Lcobucci\JWT\Token\Parser;
+use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -45,6 +50,7 @@ use Throwable;
 
 use function array_key_exists;
 use function in_array;
+use function is_string;
 use function preg_match;
 use function sprintf;
 use function strtoupper;
@@ -52,12 +58,15 @@ use function strtoupper;
 final class JwtAuthentication implements MiddlewareInterface
 {
     private readonly LoggerInterface $logger;
+    private readonly ParserInterface $parser;
 
     public function __construct(
         private readonly JwtAuthenticationOption $options,
-        ?LoggerInterface $logger = null
+        ?LoggerInterface $logger = null,
+        ?ParserInterface $parser = null
     ) {
         $this->logger = $logger ?? new NullLogger();
+        $this->parser = $parser ?? new Parser(new JoseEncoder());
     }
 
     public function __invoke(
@@ -111,6 +120,8 @@ final class JwtAuthentication implements MiddlewareInterface
 
     /**
      * Fetch the access token.
+     *
+     * @return non-empty-string
      */
     private function fetchToken(ServerRequestInterface $request): string
     {
@@ -121,20 +132,20 @@ final class JwtAuthentication implements MiddlewareInterface
             if (preg_match($this->options->regexp, $header, $matches)) {
                 $this->logger->debug('Using token from request header');
 
-                return $matches[1];
+                return $this->produceNonEmptyString($matches[1]);
             }
         }
 
         /* Token not found in header try a cookie. */
         $cookieParams = $request->getCookieParams();
 
-        if (array_key_exists($this->options->cookie, $cookieParams)) {
+        if (array_key_exists($this->options->cookie, $cookieParams) && is_string($cookieParams[$this->options->cookie])) {
             $this->logger->debug('Using token from cookie');
             if (preg_match($this->options->regexp, $cookieParams[$this->options->cookie], $matches)) {
-                return $matches[1];
+                return $this->produceNonEmptyString($matches[1]);
             }
 
-            return $cookieParams[$this->options->cookie];
+            return $this->produceNonEmptyString($cookieParams[$this->options->cookie]);
         }
 
         /* If everything fails log and throw. */
@@ -143,19 +154,39 @@ final class JwtAuthentication implements MiddlewareInterface
         throw TokenNotFound::create();
     }
 
+    /** @return non-empty-string */
+    private function produceNonEmptyString(string $value): string
+    {
+        if (empty($value)) {
+            throw TokenNotFound::create();
+        }
+
+        return $value;
+    }
+
     /**
      * Decode the token.
+     *
+     * @param non-empty-string $token
      */
     private function decodeToken(string $token): JwtDecodedToken
     {
         try {
-            $decoded = JWT::decode($token, $this->options->secret->__invoke($this->options->algorithm));
+            $tokenDecoded = $this->parser->parse($token);
+
+            if ($tokenDecoded->isExpired(new DateTimeImmutable())) {
+                throw new Exception('Token expired');
+            }
+
+            if (! ($tokenDecoded instanceof Plain)) {
+                throw new Exception('Token not signed');
+            }
         } catch (Throwable $exception) {
             $this->logger->warning($exception->getMessage(), [$token]);
 
             throw $exception;
         }
 
-        return new JwtDecodedToken((array) $decoded, $token);
+        return new JwtDecodedToken($tokenDecoded, $token);
     }
 }

@@ -16,6 +16,7 @@ vendor: $(wildcard composer.lock)
 	composer install
 
 lint: vendor
+	vendor/bin/phpcbf
 	vendor/bin/phpcs
 
 unit: vendor
@@ -23,11 +24,15 @@ unit: vendor
 
 static: vendor
 	vendor/bin/phpstan
+	vendor/bin/psalm
 
 watch: vendor
 	find . -name "*.php" -not -path "./vendor/*" -o -name "*.json" -not -path "./vendor/*" | entr -c make test
 
-test: lint unit static
+infection: vendor
+	vendor/bin/infection --show-mutations
+
+test: lint unit static infection
 
 clean:
 	rm -rf vendor

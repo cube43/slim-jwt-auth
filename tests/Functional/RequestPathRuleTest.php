@@ -37,6 +37,7 @@ use PHPUnit\Framework\TestCase;
 use Tuupola\Http\Factory\ServerRequestFactory;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
 
+/** @psalm-suppress UnusedClass */
 class RequestPathRuleTest extends TestCase
 {
     public function testWrongUri(): void

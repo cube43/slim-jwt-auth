@@ -34,70 +34,55 @@ SOFTWARE.
 namespace Tuupola\Tests\Middleware;
 
 use Equip\Dispatch\MiddlewareCollection;
+use Lcobucci\JWT\Parser;
+use Lcobucci\JWT\Signer\Key\InMemory;
+use Lcobucci\JWT\Token;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 use Tuupola\Http\Factory\ResponseFactory;
 use Tuupola\Http\Factory\ServerRequestFactory;
 use Tuupola\Http\Factory\StreamFactory;
 use Tuupola\Middleware\JwtAuthentication;
-use Tuupola\Middleware\JwtAuthentication\ArrayAccessSecret;
-use Tuupola\Middleware\JwtAuthentication\ArrayOfSecret;
 use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
-use Tuupola\Middleware\JwtAuthentication\StringSecret;
 use Tuupola\Middleware\JwtAuthenticationOption;
 use Tuupola\Middleware\JwtAuthentificationAcl;
 use Tuupola\Middleware\JwtAuthentificationAfter;
 use Tuupola\Middleware\JwtAuthentificationBefore;
 use Tuupola\Middleware\JwtAuthentificationError;
 use Tuupola\Middleware\JwtDecodedToken;
-use Tuupola\Tests\Middleware\Assets\ArrayAccessImpl;
 use Tuupola\Tests\Middleware\Assets\TestAfterHandler;
 use Tuupola\Tests\Middleware\Assets\TestBeforeHandler;
 use Tuupola\Tests\Middleware\Assets\TestErrorHandler;
 
 use function assert;
-use function is_string;
 use function json_encode;
 
+/** @psalm-suppress UnusedClass */
 class JwtAuthenticationTest extends TestCase
 {
     /* @codingStandardsIgnoreStart */
-    public static string $acmeToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImFjbWUifQ.eyJpc3MiOiJBY21lIFRvb3RocGljcyBMdGQiLCJpYXQiOiIxNDI4ODE5OTQxIiwiZXhwIjoiMTc0NDM1Mjc0MSIsImF1ZCI6Ind3dy5leGFtcGxlLmNvbSIsInN1YiI6InNvbWVvbmVAZXhhbXBsZS5jb20iLCJzY29wZSI6WyJyZWFkIiwid3JpdGUiLCJkZWxldGUiXX0.yBhYlsMabKTh31taAiH8i2ScPMKm84jxIDNxft6EiTA";
-    public static string $betaToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImJldGEifQ.eyJraWQiOiJiZXRhIiwiaXNzIjoiQmV0YSBTcG9uc29yc2hpcCBMdGQiLCJpYXQiOiIxNDI4ODE5OTQxIiwiZXhwIjoiMTc0NDM1Mjc0MSIsImF1ZCI6Ind3dy5leGFtcGxlLmNvbSIsInN1YiI6InNvbWVvbmVAZXhhbXBsZS5jb20iLCJzY29wZSI6WyJyZWFkIl19.msxcBx4_ZQtCkkjHyTDWDC0mac4cFNSxLqkzNL30JB8";
-    public static string $expired = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBY21lIFRvb3RocGljcyBMdGQiLCJpYXQiOjE0Mjg4MTk5NDEsImV4cCI6MTQ4MDcyMzIwMCwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoic29tZW9uZUBleGFtcGxlLmNvbSIsInNjb3BlIjpbInJlYWQiLCJ3cml0ZSIsImRlbGV0ZSJdfQ.ZydGEHVmca4ofQRCuMOfZrUXprAoe5GcySg4I-lwIjc";
+    public static string $acmeToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImZvbyI6ImJhciJ9.eyJpc3MiOiJBY21lIFRvb3RocGljcyBMdGQiLCJhdWQiOiJ3d3cuZXhhbXBsZS5jb20iLCJqdGkiOiI0ZjFnMjNhMTJhYSIsImlhdCI6MTY5NTgzNDEzOC41MjI4MjQsIm5iZiI6MTY5NTgzNDE5OC41MjI4MjQsImV4cCI6MjMyNjk4NjEzOC41MjI4MjQsInVpZCI6MX0.4oMy-zTQDQI_4-MuiIrbzAIoZwiiAq9H394_c0w-FT0";
+    public static string $betaToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImZvbyI6ImJhciJ9.eyJpc3MiOiJBY21lIFRvb3RocGljcyBMdGQiLCJhdWQiOiJ3d3cueW95b295by5jb20iLCJqdGkiOiI0ZjFnMjNhMTJhYSIsImlhdCI6MTY5NTgzNDc2Ny42ODcwNTQsIm5iZiI6MTY5NTgzNDgyNy42ODcwNTQsImV4cCI6MjMyNjk4Njc2Ny42ODcwNTQsInVpZCI6MX0.9OnoIErgS3LnNMwmhy2JPY3Vt2f58I8fbvJDO8H8jis";
+    public static string $expired = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImZvbyI6ImJhciJ9.eyJpc3MiOiJBY21lIFRvb3RocGljcyBMdGQiLCJhdWQiOiJ3d3cueW95b295by5jb20iLCJqdGkiOiI0ZjFnMjNhMTJhYSIsImlhdCI6MTY5NTgzNDc5MC45MDA5NzMsIm5iZiI6MTY5NTgzNDg1MC45MDA5NzMsImV4cCI6MTA2NDY4Mjc5MC45MDA5NzMsInVpZCI6MX0.c4rxuu3ZUsuP-xhbj8c4B-b6d0XYl3GiliUQW58IBcc";
     /* @codingStandardsIgnoreEnd */
 
     /** @var array<string, string|string[]> */
-    public static array $acmeTokenArray = [
-        'iss' => 'Acme Toothpics Ltd',
-        'iat' => '1428819941',
-        'exp' => '1744352741',
-        'aud' => 'www.example.com',
-        'sub' => 'someone@example.com',
-        'scope' => ['read', 'write', 'delete'],
-    ];
+    public static array $acmeTokenArray = ['iss' => 'Acme Toothpics Ltd'];
 
     /** @var array<string, string|string[]> */
-    public static array $betaTokenArray = [
-        'iss' => 'Beta Sponsorship Ltd',
-        'iat' => '1428819941',
-        'exp' => '1744352741',
-        'aud' => 'www.example.com',
-        'sub' => 'someone@example.com',
-        'scope' => ['read'],
-    ];
+    public static array $betaTokenArray = ['iss' => 'Beta Sponsorship Ltd'];
 
     public function testShouldReturn401WithoutToken(): void
     {
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api');
 
-        $default = static function (RequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
@@ -108,7 +93,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
         $logger->expects(self::once())->method('debug')->with('Token not found', []);
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
@@ -127,7 +112,7 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('X-Token', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
@@ -138,7 +123,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
         $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))->withHeader('X-Token');
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))->withHeader('X-Token');
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
@@ -157,7 +142,7 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('X-Token', self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
@@ -168,7 +153,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
         $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withHeader('X-Token')
             ->withRegexp('/(.*)/');
 
@@ -189,7 +174,7 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withCookieParams(['nekot' => self::$acmeToken]);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
@@ -200,7 +185,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
         $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withCookie('nekot');
 
         $collection = new MiddlewareCollection([
@@ -212,6 +197,39 @@ class JwtAuthenticationTest extends TestCase
 
         self::assertEquals(200, $response->getStatusCode());
         self::assertEquals('Success', $response->getBody());
+    }
+
+    public function testShouldReturn200WithTokenFromCookieButEmptyValue(): void
+    {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('GET', 'https://example.com/api')
+            ->withCookieParams(['nekot' => '']);
+
+        $default = static function (): ResponseInterface {
+            $response = (new ResponseFactory())->createResponse();
+            $response->getBody()->write('Success');
+
+            return $response;
+        };
+
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+        $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
+            ->withCookie('nekot');
+
+        $collection = new MiddlewareCollection([
+            new JwtAuthentication($option, $logger),
+            new JwtAuthentificationAcl($option),
+        ]);
+
+        $response = $collection->dispatch($request, $default);
+
+        $body = $response->getBody();
+        $body->rewind();
+        self::assertEquals(401, $response->getStatusCode());
+        self::assertEquals('', $body->getContents());
     }
 
     public function testShouldReturn200WithTokenFromBearerCookie(): void
@@ -220,7 +238,7 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withCookieParams(['nekot' => 'Bearer ' . self::$acmeToken]);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
@@ -231,7 +249,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
         $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withCookie('nekot');
 
         $collection = new MiddlewareCollection([
@@ -245,138 +263,20 @@ class JwtAuthenticationTest extends TestCase
         self::assertEquals('Success', $response->getBody());
     }
 
-    public function testShouldReturn200WithSecretArray(): void
-    {
-        $request = (new ServerRequestFactory())
-            ->createServerRequest('GET', 'https://example.com/api')
-            ->withHeader('Authorization', 'Bearer ' . self::$betaToken);
-
-        $default = static function (ServerRequestInterface $request) {
-            $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success');
-
-            return $response;
-        };
-
-        $option = JwtAuthenticationOption::create(new ArrayOfSecret([
-            'acme' => 'supersecretkeyyoushouldnotcommittogithub',
-            'beta' => 'anothersecretkeyfornevertocommittogithub',
-        ]));
-
-        $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
-        ]);
-
-        $response = $collection->dispatch($request, $default);
-        self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Success', $response->getBody());
-    }
-
-    public function testShouldReturn401WithSecretArray(): void
-    {
-        $request = (new ServerRequestFactory())
-            ->createServerRequest('GET', 'https://example.com/api')
-            ->withHeader('Authorization', 'Bearer ' . self::$betaToken);
-
-        $default = static function (ServerRequestInterface $request) {
-            $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success');
-
-            return $response;
-        };
-
-        $logger = self::createMock(LoggerInterface::class);
-        $logger->expects(self::once())->method('warning')->with('"kid" invalid, unable to lookup correct key', [self::$betaToken]);
-        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
-
-        $option = JwtAuthenticationOption::create(new ArrayOfSecret([
-            'xxxx' => 'supersecretkeyyoushouldnotcommittogithub',
-            'yyyy' => 'anothersecretkeyfornevertocommittogithub',
-        ]));
-
-        $collection = new MiddlewareCollection([
-            new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
-        ]);
-
-        $response = $collection->dispatch($request, $default);
-        self::assertEquals(401, $response->getStatusCode());
-        self::assertEquals('', $response->getBody());
-    }
-
-    public function testShouldReturn200WithSecretArrayAccess(): void
-    {
-        $request = (new ServerRequestFactory())
-            ->createServerRequest('GET', 'https://example.com/api')
-            ->withHeader('Authorization', 'Bearer ' . self::$betaToken);
-
-        $default = static function (ServerRequestInterface $request) {
-            $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success');
-
-            return $response;
-        };
-
-        $secret         = new ArrayAccessImpl();
-        $secret['acme'] = 'supersecretkeyyoushouldnotcommittogithub';
-        $secret['beta'] = 'anothersecretkeyfornevertocommittogithub';
-
-        $option = JwtAuthenticationOption::create(new ArrayAccessSecret($secret));
-
-        $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
-        ]);
-
-        $response = $collection->dispatch($request, $default);
-        self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Success', $response->getBody());
-    }
-
-    public function testShouldReturn401WithSecretArrayAccess(): void
-    {
-        $request = (new ServerRequestFactory())
-            ->createServerRequest('GET', 'https://example.com/api')
-            ->withHeader('Authorization', 'Bearer ' . self::$betaToken);
-
-        $default = static function (ServerRequestInterface $request) {
-            $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success');
-
-            return $response;
-        };
-
-        $secret         = new ArrayAccessImpl();
-        $secret['xxxx'] = 'supersecretkeyyoushouldnotcommittogithub';
-        $secret['yyyy'] = 'anothersecretkeyfornevertocommittogithub';
-
-        $option = JwtAuthenticationOption::create(new ArrayAccessSecret($secret));
-
-        $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
-        ]);
-
-        $response = $collection->dispatch($request, $default);
-        self::assertEquals(401, $response->getStatusCode());
-        self::assertEquals('', $response->getBody());
-    }
-
     public function testShouldAlterResponseWithAnonymousAfter(): void
     {
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
                 public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
                 {
@@ -392,7 +292,41 @@ class JwtAuthenticationTest extends TestCase
         $response = $collection->dispatch($request, $default);
 
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('plants crave', (string) $response->getHeaderLine('X-Brawndo'));
+        self::assertEquals('plants crave', $response->getHeaderLine('X-Brawndo'));
+    }
+
+    public function testWronParser(): void
+    {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('GET', 'https://example.com/api')
+            ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
+
+        $default = static function (): ResponseInterface {
+            $response = (new ResponseFactory())->createResponse();
+            $response->getBody()->write('Success');
+
+            return $response;
+        };
+
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('warning')->with('Token not signed', [self::$acmeToken]);
+
+        $token = self::createMock(Token::class);
+        $token->expects(self::once())->method('isExpired')->willReturn(false);
+        $parser = self::createMock(Parser::class);
+        $parser->expects(self::once())->method('parse')->willReturn($token);
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
+            ->withAfter(new TestAfterHandler());
+
+        $collection = new MiddlewareCollection([
+            new JwtAuthentication($option, $logger, $parser),
+            new JwtAuthentificationAcl($option),
+        ]);
+
+        $response = $collection->dispatch($request, $default);
+
+        self::assertEquals(401, $response->getStatusCode());
     }
 
     public function testShouldAlterResponseWithInvokableAfter(): void
@@ -401,14 +335,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new TestAfterHandler());
 
         $collection = new MiddlewareCollection([
@@ -419,37 +353,7 @@ class JwtAuthenticationTest extends TestCase
         $response = $collection->dispatch($request, $default);
 
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals(
-            'plants crave',
-            (string) $response->getHeaderLine('X-Brawndo'),
-        );
-    }
-
-    public function testShouldReturn401WithInvalidAlgorithm(): void
-    {
-        $request = (new ServerRequestFactory())
-            ->createServerRequest('GET', 'https://example.com/api')
-            ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
-
-        $default = static function (ServerRequestInterface $request) {
-            $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success');
-
-            return $response;
-        };
-
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
-            ->withAlgorithm('nosuch');
-
-        $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
-        ]);
-
-        $response = $collection->dispatch($request, $default);
-
-        self::assertEquals(401, $response->getStatusCode());
-        self::assertEquals('', $response->getBody());
+        self::assertEquals('plants crave', $response->getHeaderLine('X-Brawndo'));
     }
 
     public function testShouldReturn200WithOptions(): void
@@ -458,14 +362,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withMethod('OPTIONS');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
@@ -484,14 +388,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer invalid' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
@@ -510,17 +414,21 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$expired);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::once())->method('warning')->with('Token expired', [self::$expired]);
+        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
@@ -535,14 +443,14 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/public');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->addRule(new RequestPathRule(['/api', '/foo'], []));
 
         $collection = new MiddlewareCollection([
@@ -561,14 +469,14 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api/ping');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->addRule(new RequestPathRule(['/api', '/foo'], ['/api/ping']));
 
         $collection = new MiddlewareCollection([
@@ -588,21 +496,21 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'http://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
             new JwtAuthentificationAcl($option),
         ]);
 
-        self::expectException('RuntimeException');
+        self::expectException(RuntimeException::class);
         self::expectExceptionMessage('Insecure use of middleware over HTTP denied by configuration');
         $collection->dispatch($request, $default);
     }
@@ -613,14 +521,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'http://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withSecure(false);
 
         $collection = new MiddlewareCollection([
@@ -640,14 +548,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'http://localhost/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
@@ -666,14 +574,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'http://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withRelaxed(['example.com']);
 
         $collection = new MiddlewareCollection([
@@ -693,18 +601,19 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (ServerRequestInterface $request): ResponseInterface {
             $decodedToken = $request->getAttribute('token');
 
             assert($decodedToken instanceof JwtDecodedToken);
 
             $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write($decodedToken->getStringAttribute('iss'));
+            $response->getBody()->write((string) json_encode($decodedToken->payload->claims()->get('iss')));
+            $response->getBody()->rewind();
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
@@ -713,8 +622,11 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
+        $body = $response->getBody();
+        $body->rewind();
+
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Acme Toothpics Ltd', $response->getBody());
+        self::assertEquals('"Acme Toothpics Ltd"', $body->getContents());
     }
 
     public function testShouldAttachCustomToken(): void
@@ -723,20 +635,18 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (ServerRequestInterface $request): ResponseInterface {
             $decodedToken = $request->getAttribute('nekot');
 
             assert($decodedToken instanceof JwtDecodedToken);
 
-            $acmeToken = $decodedToken->payload;
-
             $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write($decodedToken->getStringAttribute('iss'));
+            $response->getBody()->write((string) json_encode($decodedToken->payload->claims()->get('iss')));
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAttribute('nekot');
 
         $collection = new MiddlewareCollection([
@@ -746,8 +656,11 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
+        $body = $response->getBody();
+        $body->rewind();
+
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Acme Toothpics Ltd', $response->getBody());
+        self::assertEquals('"Acme Toothpics Ltd"', $body->getContents());
     }
 
     public function testShouldCallAfterWithProperArguments(): void
@@ -756,18 +669,18 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
                 public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
                 {
-                    return $response->withHeader('decoded', (string) json_encode($jwtDecodedToken->payload))->withHeader('token', $jwtDecodedToken->token);
+                    return $response->withHeader('decoded', (string) json_encode($jwtDecodedToken->payload->claims()->get('iss')))->withHeader('token', $jwtDecodedToken->token);
                 }
             });
 
@@ -780,7 +693,7 @@ class JwtAuthenticationTest extends TestCase
 
         self::assertEquals(200, $response->getStatusCode());
         self::assertEquals('Success', $response->getBody());
-        self::assertJsonStringEqualsJsonString((string) json_encode(self::$acmeTokenArray), $response->getHeaderLine('decoded'));
+        self::assertJsonStringEqualsJsonString((string) json_encode(self::$acmeTokenArray['iss']), $response->getHeaderLine('decoded'));
         self::assertEquals(self::$acmeToken, $response->getHeaderLine('token'));
     }
 
@@ -790,21 +703,18 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $decoded = null;
-        $token   = null;
-
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (ServerRequestInterface $request): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
-            $response->getBody()->write('Success' . $request->getAttribute('decoded') . $request->getAttribute('token'));
+            $response->getBody()->write('Success' . (string) json_encode($request->getAttribute('decoded')) . (string) json_encode($request->getAttribute('token')));
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withBefore(new class implements JwtAuthentificationBefore {
                 public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
                 {
-                    return $request->withAttribute('decoded', json_encode($jwtDecodedToken->payload))
+                    return $request->withAttribute('decoded', (string) json_encode($jwtDecodedToken->payload->claims()->get('iss')))
                         ->withAttribute('token', $jwtDecodedToken->token);
                 }
             });
@@ -816,8 +726,11 @@ class JwtAuthenticationTest extends TestCase
 
         $response = $collection->dispatch($request, $default);
 
+        $body = $response->getBody();
+
+        $body->rewind();
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Success' . json_encode(self::$acmeTokenArray) . self::$acmeToken, $response->getBody());
+        self::assertEquals('Success' . (string) json_encode(json_encode(self::$acmeTokenArray['iss'])) . (string) json_encode(self::$acmeToken), $body->getContents());
     }
 
     public function testShouldCallAnonymousErrorFunction(): void
@@ -825,14 +738,14 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withError(new class implements JwtAuthentificationError {
                 public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
                 {
@@ -860,14 +773,14 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withError(new TestErrorHandler());
 
         $collection = new MiddlewareCollection([
@@ -887,14 +800,14 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withError(new class implements JwtAuthentificationError {
                 public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
                 {
@@ -920,14 +833,14 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/public/foo');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->addRule(new RequestPathRule(['/api', '/foo'], []));
 
         $collection = new MiddlewareCollection([
@@ -946,14 +859,14 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
                 public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
                 {
@@ -980,15 +893,17 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (ServerRequestInterface $request): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
-            $test     = $request->getAttribute('test');
-            $response->getBody()->write(is_string($test) ? $test : 'no');
+            $response->getBody()->write((string) json_encode($request->getAttribute('test')));
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withBefore(new class implements JwtAuthentificationBefore {
                 public function __invoke(ServerRequestInterface $request, JwtDecodedToken $jwtDecodedToken): ServerRequestInterface
                 {
@@ -997,14 +912,14 @@ class JwtAuthenticationTest extends TestCase
             });
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('test', (string) $response->getBody());
+        self::assertEquals('"test"', (string) $response->getBody());
     }
 
     public function testShouldModifyRequestUsingInvokableBefore(): void
@@ -1013,26 +928,28 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (ServerRequestInterface $request): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
-            $test     = $request->getAttribute('test');
-            $response->getBody()->write(is_string($test) ? $test : 'no');
+            $response->getBody()->write((string) json_encode($request->getAttribute('test')));
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withBefore(new TestBeforeHandler());
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
 
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('invoke', (string) $response->getBody());
+        self::assertEquals('"invoke"', (string) $response->getBody());
     }
 
     public function testShouldHandleRulesArrayBug84(): void
@@ -1040,21 +957,24 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withRules(
                 new RequestPathRule(['/api'], ['/api/login']),
                 new RequestMethodRule(['OPTIONS']),
             );
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
@@ -1077,18 +997,21 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->addRule(new RequestPathRule(['/'], ['/api/login']));
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
@@ -1112,15 +1035,17 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/')
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (ServerRequestInterface $request): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
-            $before   = $request->getAttribute('before');
-            $response->getBody()->write(is_string($before) ? $before : 'no');
+            $response->getBody()->write((string) json_encode($request->getAttribute('before')));
 
             return $response;
         };
 
-        $option =                 JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withAfter(new class implements JwtAuthentificationAfter {
                 public function __invoke(ResponseInterface $response, JwtDecodedToken $jwtDecodedToken): ResponseInterface
                 {
@@ -1137,13 +1062,13 @@ class JwtAuthenticationTest extends TestCase
             });
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
         $response = $collection->dispatch($request, $default);
         self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('im beforeim after', (string) $response->getBody());
+        self::assertEquals('"im before"im after', (string) $response->getBody());
     }
 
     public function testShouldHandlePsr7(): void
@@ -1154,12 +1079,12 @@ class JwtAuthenticationTest extends TestCase
 
         $response = (new ResponseFactory())->createResponse();
 
-        $option =                 JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withHeader('X-Token');
 
         $auth = new JwtAuthentication($option);
 
-        $next = static function (ServerRequestInterface $request, ResponseInterface $response) {
+        $next = static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
             $response->getBody()->write('Success');
 
             return $response;
@@ -1176,14 +1101,17 @@ class JwtAuthenticationTest extends TestCase
         $request = (new ServerRequestFactory())
             ->createServerRequest('GET', 'https://example.com/api/foo?bar=pop');
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option =                 JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withError(new class implements JwtAuthentificationError {
                 public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
                 {
@@ -1192,7 +1120,7 @@ class JwtAuthenticationTest extends TestCase
             });
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
@@ -1209,19 +1137,22 @@ class JwtAuthenticationTest extends TestCase
             ->createServerRequest('GET', 'https://example.com/api')
             ->withCookieParams(['token' => self::$acmeToken]);
 
-        $default = static function (ServerRequestInterface $request) {
+        $default = static function (): ResponseInterface {
             $response = (new ResponseFactory())->createResponse();
             $response->getBody()->write('Success');
 
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(new StringSecret('supersecretkeyyoushouldnotcommittogithub'))
+        $logger = self::createMock(LoggerInterface::class);
+        $logger->expects(self::never())->method('warning');
+
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
             ->withHeader('X-Token')
             ->withRegexp('/(.*)/');
 
         $collection = new MiddlewareCollection([
-            new JwtAuthentication($option),
+            new JwtAuthentication($option, $logger),
             new JwtAuthentificationAcl($option),
         ]);
 
