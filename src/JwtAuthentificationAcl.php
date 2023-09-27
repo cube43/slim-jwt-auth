@@ -36,7 +36,7 @@ final class JwtAuthentificationAcl implements MiddlewareInterface
         }
 
         if ($request->getAttribute($this->options->attribute) === null) {
-            return $this->options->error->__invoke($request, (new ResponseFactory())->createResponse(401), new NotAuthorized());
+            return $this->options->error->__invoke($request, (new ResponseFactory())->createResponse(401), NotAuthorized::create());
         }
 
         return $handler->handle($request);
