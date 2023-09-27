@@ -33,8 +33,8 @@ SOFTWARE.
 
 namespace Tuupola\Tests\Middleware;
 
+use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Tuupola\Http\Factory\ServerRequestFactory;
 use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
 
 /** @psalm-suppress UnusedClass */
@@ -42,9 +42,11 @@ class RequestMethodRuleTest extends TestCase
 {
     public function testShouldNotAuthenticateOptions(): void
     {
-        $request = (new ServerRequestFactory())->createServerRequest(
-            'OPTIONS',
+        $request = new ServerRequest(
+            [],
+            [],
             'https://example.com/api',
+            'OPTIONS',
         );
 
         $rule = new RequestMethodRule();
@@ -54,9 +56,11 @@ class RequestMethodRuleTest extends TestCase
 
     public function testShouldAuthenticatePost(): void
     {
-        $request = (new ServerRequestFactory())->createServerRequest(
-            'POST',
+        $request = new ServerRequest(
+            [],
+            [],
             'https://example.com/api',
+            'POST',
         );
 
         $rule = new RequestMethodRule();
@@ -66,9 +70,11 @@ class RequestMethodRuleTest extends TestCase
 
     public function testShouldAuthenticateGet(): void
     {
-        $request = (new ServerRequestFactory())->createServerRequest(
-            'GET',
+        $request = new ServerRequest(
+            [],
+            [],
             'https://example.com/api',
+            'GET',
         );
 
         $rule = new RequestMethodRule();
@@ -78,9 +84,11 @@ class RequestMethodRuleTest extends TestCase
 
     public function testShouldConfigureIgnore(): void
     {
-        $request = (new ServerRequestFactory())->createServerRequest(
-            'GET',
+        $request = new ServerRequest(
+            [],
+            [],
             'https://example.com/api',
+            'GET',
         );
 
         $rule = new RequestMethodRule(['GET']);
