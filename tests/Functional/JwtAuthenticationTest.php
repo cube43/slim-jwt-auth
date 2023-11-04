@@ -34,7 +34,9 @@ SOFTWARE.
 namespace Tuupola\Tests\Middleware;
 
 use Equip\Dispatch\MiddlewareCollection;
+use Laminas\Diactoros\Response;
 use Laminas\Diactoros\ServerRequest;
+use Laminas\Diactoros\Stream;
 use Lcobucci\JWT\Parser;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token;
@@ -45,8 +47,6 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
-use Tuupola\Http\Factory\ResponseFactory;
-use Tuupola\Http\Factory\StreamFactory;
 use Tuupola\Middleware\JwtAuthentication;
 use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
@@ -60,6 +60,7 @@ use Tuupola\Tests\Middleware\Assets\TestBeforeHandler;
 use Tuupola\Tests\Middleware\Assets\TestErrorHandler;
 
 use function assert;
+use function fopen;
 use function json_encode;
 
 /** @psalm-suppress UnusedClass */
@@ -82,7 +83,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -96,7 +97,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -111,7 +112,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('X-Token', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -125,7 +126,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -140,7 +141,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('X-Token', self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -156,7 +157,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -171,7 +172,7 @@ class JwtAuthenticationTest extends TestCase
             ->withCookieParams(['nekot' => self::$acmeToken]);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -186,7 +187,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -201,7 +202,7 @@ class JwtAuthenticationTest extends TestCase
             ->withCookieParams(['nekot' => '']);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -216,7 +217,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -233,7 +234,7 @@ class JwtAuthenticationTest extends TestCase
             ->withCookieParams(['nekot' => 'Bearer ' . self::$acmeToken]);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -248,7 +249,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -263,7 +264,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -279,7 +280,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -294,7 +295,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -313,7 +314,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger, $parser),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -327,7 +328,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -338,7 +339,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -353,7 +354,7 @@ class JwtAuthenticationTest extends TestCase
             ->withMethod('OPTIONS');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -363,7 +364,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -378,7 +379,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer invalid' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -388,7 +389,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -403,7 +404,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$expired);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -417,7 +418,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -431,7 +432,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/public', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -442,7 +443,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -456,7 +457,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api/ping', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -467,7 +468,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -482,7 +483,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -492,7 +493,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         self::expectException(RuntimeException::class);
@@ -506,7 +507,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -517,7 +518,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -532,7 +533,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -542,7 +543,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -557,7 +558,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -568,7 +569,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -587,7 +588,7 @@ class JwtAuthenticationTest extends TestCase
 
             assert($decodedToken instanceof Plain);
 
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write((string) json_encode($decodedToken->claims()->get('iss')));
             $response->getBody()->rewind();
 
@@ -598,7 +599,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -620,7 +621,7 @@ class JwtAuthenticationTest extends TestCase
 
             assert($decodedToken instanceof Plain);
 
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write((string) json_encode($decodedToken->claims()->get('iss')));
 
             return $response;
@@ -631,7 +632,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -649,7 +650,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -665,7 +666,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -681,7 +682,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (ServerRequestInterface $request): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success' . (string) json_encode($request->getAttribute('decoded')));
 
             return $response;
@@ -697,7 +698,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -714,7 +715,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -733,7 +734,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -748,7 +749,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -759,7 +760,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -774,7 +775,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -792,7 +793,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -806,7 +807,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/public/foo', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -817,7 +818,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
         $response   = $collection->dispatch($request, $default);
 
@@ -831,7 +832,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -841,15 +842,17 @@ class JwtAuthenticationTest extends TestCase
             ->withAfter(new class implements JwtAuthentificationAfter {
                 public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
+                    $resource = fopen('php://temp', 'r+');
+
                     return $response
-                        ->withBody((new StreamFactory())->createStream())
+                        ->withBody(new Stream($resource))
                         ->withStatus(401);
                 }
             });
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -864,7 +867,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (ServerRequestInterface $request): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write((string) json_encode($request->getAttribute('test')));
 
             return $response;
@@ -883,7 +886,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -898,7 +901,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (ServerRequestInterface $request): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write((string) json_encode($request->getAttribute('test')));
 
             return $response;
@@ -912,7 +915,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -926,7 +929,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -943,7 +946,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -964,7 +967,7 @@ class JwtAuthenticationTest extends TestCase
         $request = new ServerRequest([], [], 'https://example.com/api', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -978,7 +981,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -1000,7 +1003,7 @@ class JwtAuthenticationTest extends TestCase
             ->withHeader('Authorization', 'Bearer ' . self::$acmeToken);
 
         $default = static function (ServerRequestInterface $request): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write((string) json_encode($request->getAttribute('before')));
 
             return $response;
@@ -1027,7 +1030,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -1035,36 +1038,12 @@ class JwtAuthenticationTest extends TestCase
         self::assertEquals('"im before"im after', (string) $response->getBody());
     }
 
-    public function testShouldHandlePsr7(): void
-    {
-        $request = (new ServerRequest([], [], 'https://example.com/api', 'GET'))
-            ->withHeader('X-Token', 'Bearer ' . self::$acmeToken);
-
-        $response = (new ResponseFactory())->createResponse();
-
-        $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withHeader('X-Token');
-
-        $auth = new JwtAuthentication($option);
-
-        $next = static function (ServerRequestInterface $request, ResponseInterface $response): ResponseInterface {
-            $response->getBody()->write('Success');
-
-            return $response;
-        };
-
-        $response = $auth($request, $response, $next);
-
-        self::assertEquals(200, $response->getStatusCode());
-        self::assertEquals('Success', $response->getBody());
-    }
-
     public function testShouldHaveUriInErrorHandlerIssue96(): void
     {
         $request = new ServerRequest([], [], 'https://example.com/api/foo?bar=pop', 'GET');
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -1083,7 +1062,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -1099,7 +1078,7 @@ class JwtAuthenticationTest extends TestCase
             ->withCookieParams(['token' => self::$acmeToken]);
 
         $default = static function (): ResponseInterface {
-            $response = (new ResponseFactory())->createResponse();
+            $response = new Response();
             $response->getBody()->write('Success');
 
             return $response;
@@ -1114,7 +1093,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option),
+            new JwtAuthentificationAcl($option, new Response()),
         ]);
 
         $response = $collection->dispatch($request, $default);

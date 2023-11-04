@@ -64,14 +64,6 @@ final class JwtAuthentication implements MiddlewareInterface
         $this->decodeToken = new DecodeToken($parser ?? new Parser(new JoseEncoder()), $logger);
     }
 
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    ): ResponseInterface {
-        return $this->process($request, new CallableHandler($next, $response));
-    }
-
     /**
      * Process a request in PSR-15 style and return a response.
      */
