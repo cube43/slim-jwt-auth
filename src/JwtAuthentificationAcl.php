@@ -13,7 +13,7 @@ use Tuupola\Middleware\JwtAuthentication\RuleInterface;
 final class JwtAuthentificationAcl implements MiddlewareInterface
 {
     /** @var RuleInterface[] */
-    private array $rules;
+    private readonly array $rules;
 
     public function __construct(
         private readonly JwtAuthenticationOption $options,
