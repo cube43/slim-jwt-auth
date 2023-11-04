@@ -30,16 +30,19 @@ SOFTWARE.
 
 namespace Tuupola\Tests\Middleware\Assets;
 
-use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ResponseInterface;
-use Tuupola\Middleware\JwtAuthentificationAfter;
+use Psr\Http\Message\ServerRequestInterface;
+use Throwable;
+use Tuupola\Middleware\JwtAuthentificationAclError;
 
-class TestAfterHandler implements JwtAuthentificationAfter
+class TestAclErrorHandler implements JwtAuthentificationAclError
 {
-    public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
+    public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
     {
         $response->getBody()->write(self::class);
 
-        return $response->withHeader('X-Brawndo', 'plants crave');
+        return $response
+            ->withStatus(402)
+            ->withHeader('X-Foo', 'Bar');
     }
 }

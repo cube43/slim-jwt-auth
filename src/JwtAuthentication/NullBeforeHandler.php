@@ -6,9 +6,9 @@ namespace Tuupola\Middleware\JwtAuthentication;
 
 use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ServerRequestInterface;
-use Tuupola\Middleware\JwtAuthentificationBefore;
+use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
 
-class NullBefore implements JwtAuthentificationBefore
+class NullBeforeHandler implements JwtAuthentificationBeforeHandler
 {
     public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
     {

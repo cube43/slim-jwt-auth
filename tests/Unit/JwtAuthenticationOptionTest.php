@@ -7,7 +7,6 @@ namespace Unit;
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
 use PHPUnit\Framework\TestCase;
-use Tuupola\Middleware\JwtAuthentication\RuleInterface;
 use Tuupola\Middleware\JwtAuthenticationOption;
 
 /** @psalm-suppress UnusedClass */
@@ -26,7 +25,6 @@ class JwtAuthenticationOptionTest extends TestCase
         self::assertSame('/Bearer\s+(.*)$/i', $sUT->regexp);
         self::assertSame('token', $sUT->cookie);
         self::assertSame('token', $sUT->attribute);
-        self::assertSame(2, $sUT->rules->count());
 
         $newSecret = self::createMock(Key::class);
         $algo      = self::createMock(Signer::class);
@@ -48,16 +46,5 @@ class JwtAuthenticationOptionTest extends TestCase
         self::assertSame('toto2', $sUT->regexp);
         self::assertSame('toto3', $sUT->cookie);
         self::assertSame('toto', $sUT->attribute);
-        self::assertSame(2, $sUT->rules->count());
-
-        $rule = self::createMock(RuleInterface::class);
-
-        $sUT = $sUT->addRule($rule);
-
-        self::assertSame(3, $sUT->rules->count());
-
-        $sUT = $sUT->withRules($rule);
-
-        self::assertSame(1, $sUT->rules->count());
     }
 }

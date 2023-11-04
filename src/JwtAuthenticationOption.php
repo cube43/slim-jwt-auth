@@ -6,23 +6,12 @@ namespace Tuupola\Middleware;
 
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
-use SplStack;
-use Tuupola\Middleware\JwtAuthentication\NullAfter;
-use Tuupola\Middleware\JwtAuthentication\NullBefore;
-use Tuupola\Middleware\JwtAuthentication\NullError;
-use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
-use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
-use Tuupola\Middleware\JwtAuthentication\RuleInterface;
+use Tuupola\Middleware\JwtAuthentication\NullAclError;
+use Tuupola\Middleware\JwtAuthentication\NullAfterHandler;
+use Tuupola\Middleware\JwtAuthentication\NullBeforeHandler;
 
 class JwtAuthenticationOption
 {
-    /**
-     * The rules stack.
-     *
-     * @var SplStack<RuleInterface>
-     */
-    public readonly SplStack $rules;
-
     /**
      * @param string[]         $relaxed
      * @param non-empty-string $regexp
@@ -36,19 +25,10 @@ class JwtAuthenticationOption
         public readonly string $regexp,
         public readonly string $cookie,
         public readonly string $attribute,
-        public readonly JwtAuthentificationBefore $before,
-        public readonly JwtAuthentificationAfter $after,
-        public readonly JwtAuthentificationError $error,
-        RuleInterface ...$rules
+        public readonly JwtAuthentificationBeforeHandler $before,
+        public readonly JwtAuthentificationAfterHandler $after,
+        public readonly JwtAuthentificationAclError $error
     ) {
-        /** @var SplStack<RuleInterface> $splStack */
-        $splStack = new SplStack();
-        /* Add the rules */
-        foreach ($rules as $callable) {
-            $splStack->push($callable);
-        }
-
-        $this->rules = $splStack;
     }
 
     public static function create(Key $secret): self
@@ -62,11 +42,9 @@ class JwtAuthenticationOption
             '/Bearer\s+(.*)$/i',
             'token',
             'token',
-            new NullBefore(),
-            new NullAfter(),
-            new NullError(),
-            new RequestMethodRule(['OPTIONS']),
-            new RequestPathRule(['/'], []),
+            new NullBeforeHandler(),
+            new NullAfterHandler(),
+            new NullAclError(),
         );
     }
 
@@ -87,7 +65,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
@@ -108,7 +85,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
@@ -131,7 +107,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
@@ -152,14 +127,13 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
     /**
      * Set the before handler.
      */
-    public function withBefore(JwtAuthentificationBefore $before): self
+    public function withBefore(JwtAuthentificationBeforeHandler $before): self
     {
         return new self(
             $this->secret,
@@ -173,14 +147,13 @@ class JwtAuthenticationOption
             $before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
     /**
      * Set the after handler.
      */
-    public function withAfter(JwtAuthentificationAfter $after): self
+    public function withAfter(JwtAuthentificationAfterHandler $after): self
     {
         return new self(
             $this->secret,
@@ -194,35 +167,13 @@ class JwtAuthenticationOption
             $this->before,
             $after,
             $this->error,
-            ...$this->rules,
-        );
-    }
-
-    /**
-     * Set the rules.
-     */
-    public function withRules(RuleInterface ...$rules): self
-    {
-        return new self(
-            $this->secret,
-            $this->secure,
-            $this->relaxed,
-            $this->algorithm,
-            $this->header,
-            $this->regexp,
-            $this->cookie,
-            $this->attribute,
-            $this->before,
-            $this->after,
-            $this->error,
-            ...$rules,
         );
     }
 
     /**
      * Set the error handler.
      */
-    public function withError(JwtAuthentificationError $error): self
+    public function withError(JwtAuthentificationAclError $error): self
     {
         return new self(
             $this->secret,
@@ -236,7 +187,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $error,
-            ...$this->rules,
         );
     }
 
@@ -257,7 +207,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
@@ -278,7 +227,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
@@ -301,7 +249,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
         );
     }
 
@@ -322,28 +269,6 @@ class JwtAuthenticationOption
             $this->before,
             $this->after,
             $this->error,
-            ...$this->rules,
-        );
-    }
-
-    /**
-     * Add a rule to the stack.
-     */
-    public function addRule(RuleInterface $callable): self
-    {
-        return new self(
-            $this->secret,
-            $this->secure,
-            $this->relaxed,
-            $this->algorithm,
-            $this->header,
-            $this->regexp,
-            $this->cookie,
-            $this->attribute,
-            $this->before,
-            $this->after,
-            $this->error,
-            ...[...$this->rules, $callable],
         );
     }
 }

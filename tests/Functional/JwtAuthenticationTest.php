@@ -48,16 +48,16 @@ use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
 use Tuupola\Middleware\JwtAuthentication;
-use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
+use Tuupola\Middleware\JwtAuthentication\IgnoreHttpMethodRule;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
 use Tuupola\Middleware\JwtAuthenticationOption;
 use Tuupola\Middleware\JwtAuthentificationAcl;
-use Tuupola\Middleware\JwtAuthentificationAfter;
-use Tuupola\Middleware\JwtAuthentificationBefore;
-use Tuupola\Middleware\JwtAuthentificationError;
-use Tuupola\Tests\Middleware\Assets\TestAfterHandler;
-use Tuupola\Tests\Middleware\Assets\TestBeforeHandler;
-use Tuupola\Tests\Middleware\Assets\TestErrorHandler;
+use Tuupola\Middleware\JwtAuthentificationAclError;
+use Tuupola\Middleware\JwtAuthentificationAfterHandler;
+use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
+use Tuupola\Tests\Middleware\Assets\TestAclErrorHandler;
+use Tuupola\Tests\Middleware\Assets\TestAfterHandlerHandler;
+use Tuupola\Tests\Middleware\Assets\TestBeforeHandlerHandler;
 
 use function assert;
 use function fopen;
@@ -271,7 +271,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withAfter(new class implements JwtAuthentificationAfter {
+            ->withAfter(new class implements JwtAuthentificationAfterHandler {
                 public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                     return $response->withHeader('X-Brawndo', 'plants crave');
@@ -310,7 +310,7 @@ class JwtAuthenticationTest extends TestCase
         $parser->expects(self::once())->method('parse')->willReturn($token);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withAfter(new TestAfterHandler());
+            ->withAfter(new TestAfterHandlerHandler());
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger, $parser),
@@ -335,7 +335,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withAfter(new TestAfterHandler());
+            ->withAfter(new TestAfterHandlerHandler());
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
@@ -364,7 +364,7 @@ class JwtAuthenticationTest extends TestCase
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option, new Response()),
+            new JwtAuthentificationAcl($option, new Response(), new IgnoreHttpMethodRule(['OPTIONS'])),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -438,12 +438,11 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->addRule(new RequestPathRule(['/api', '/foo'], []));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option, new Response()),
+            new JwtAuthentificationAcl($option, new Response(), new RequestPathRule(['/api', '/foo'], [])),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -463,12 +462,11 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->addRule(new RequestPathRule(['/api', '/foo'], ['/api/ping']));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option, new Response()),
+            new JwtAuthentificationAcl($option, new Response(), new RequestPathRule(['/api', '/foo'], ['/api/ping'])),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -657,7 +655,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withAfter(new class implements JwtAuthentificationAfter {
+            ->withAfter(new class implements JwtAuthentificationAfterHandler {
                 public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                     return $response->withHeader('decoded', (string) json_encode($token->claims()->get('iss')));
@@ -689,7 +687,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withBefore(new class implements JwtAuthentificationBefore {
+            ->withBefore(new class implements JwtAuthentificationBeforeHandler {
                 public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
                 {
                     return $request->withAttribute('decoded', (string) json_encode($token->claims()->get('iss')));
@@ -722,7 +720,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withError(new class implements JwtAuthentificationError {
+            ->withError(new class implements JwtAuthentificationAclError {
                 public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
                 {
                     $response->getBody()->write('error');
@@ -756,7 +754,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withError(new TestErrorHandler());
+            ->withError(new TestAclErrorHandler());
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
@@ -767,7 +765,7 @@ class JwtAuthenticationTest extends TestCase
 
         self::assertEquals(402, $response->getStatusCode());
         self::assertEquals('Bar', $response->getHeaderLine('X-Foo'));
-        self::assertEquals(TestErrorHandler::class, $response->getBody());
+        self::assertEquals(TestAclErrorHandler::class, $response->getBody());
     }
 
     public function testShouldCallErrorAndModifyBody(): void
@@ -782,7 +780,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withError(new class implements JwtAuthentificationError {
+            ->withError(new class implements JwtAuthentificationAclError {
                 public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
                 {
                      $response->getBody()->write('Error');
@@ -813,12 +811,11 @@ class JwtAuthenticationTest extends TestCase
             return $response;
         };
 
-        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->addRule(new RequestPathRule(['/api', '/foo'], []));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option),
-            new JwtAuthentificationAcl($option, new Response()),
+            new JwtAuthentificationAcl($option, new Response(), new RequestPathRule(['/api', '/foo'], [])),
         ]);
         $response   = $collection->dispatch($request, $default);
 
@@ -839,7 +836,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withAfter(new class implements JwtAuthentificationAfter {
+            ->withAfter(new class implements JwtAuthentificationAfterHandler {
                 public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                     $resource = fopen('php://temp', 'r+');
@@ -877,7 +874,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withBefore(new class implements JwtAuthentificationBefore {
+            ->withBefore(new class implements JwtAuthentificationBeforeHandler {
                 public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
                 {
                     return $request->withAttribute('test', 'test');
@@ -911,7 +908,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withBefore(new TestBeforeHandler());
+            ->withBefore(new TestBeforeHandlerHandler());
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
@@ -938,15 +935,11 @@ class JwtAuthenticationTest extends TestCase
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::never())->method('warning');
 
-        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withRules(
-                new RequestPathRule(['/api'], ['/api/login']),
-                new RequestMethodRule(['OPTIONS']),
-            );
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option, new Response()),
+            new JwtAuthentificationAcl($option, new Response(), new RequestPathRule(['/api'], ['/api/login']), new IgnoreHttpMethodRule(['OPTIONS'])),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -976,12 +969,11 @@ class JwtAuthenticationTest extends TestCase
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::never())->method('warning');
 
-        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->addRule(new RequestPathRule(['/'], ['/api/login']));
+        $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
         $collection = new MiddlewareCollection([
             new JwtAuthentication($option, $logger),
-            new JwtAuthentificationAcl($option, new Response()),
+            new JwtAuthentificationAcl($option, new Response(), new RequestPathRule(['/'], ['/api/login'])),
         ]);
 
         $response = $collection->dispatch($request, $default);
@@ -1013,7 +1005,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
 
         $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withAfter(new class implements JwtAuthentificationAfter {
+            ->withAfter(new class implements JwtAuthentificationAfterHandler {
                 public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
                 {
                      $response->getBody()->write('im after');
@@ -1021,7 +1013,7 @@ class JwtAuthenticationTest extends TestCase
                     return $response;
                 }
             })
-            ->withBefore(new class implements JwtAuthentificationBefore {
+            ->withBefore(new class implements JwtAuthentificationBeforeHandler {
                 public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
                 {
                     return $request->withAttribute('before', 'im before');
@@ -1053,7 +1045,7 @@ class JwtAuthenticationTest extends TestCase
         $logger->expects(self::never())->method('warning');
 
         $option =                 JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='))
-            ->withError(new class implements JwtAuthentificationError {
+            ->withError(new class implements JwtAuthentificationAclError {
                 public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
                 {
                     return $response->withHeader('X-Uri', (string) $request->getUri());

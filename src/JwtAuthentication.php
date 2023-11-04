@@ -64,19 +64,12 @@ final class JwtAuthentication implements MiddlewareInterface
         $this->decodeToken = new DecodeToken($parser ?? new Parser(new JoseEncoder()), $logger);
     }
 
-    /**
-     * Process a request in PSR-15 style and return a response.
-     */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $scheme = $request->getUri()->getScheme();
-        $host   = $request->getUri()->getHost();
-
-        /* HTTP allowed only if secure is false or server is in relaxed array. */
-        if ($scheme !== 'https' && $this->options->secure === true && ! in_array($host, $this->options->relaxed)) {
+        if (! $this->isConfigurationSecure($request)) {
             throw new RuntimeException(sprintf(
                 'Insecure use of middleware over %s denied by configuration.',
-                strtoupper($scheme),
+                strtoupper($request->getUri()->getScheme()),
             ));
         }
 
@@ -92,16 +85,27 @@ final class JwtAuthentication implements MiddlewareInterface
             return $handler->handle($request);
         }
 
-        /* Add decoded token to request as attribute when requested. */
-        $request = $request->withAttribute($this->options->attribute, $jwtDecodedToken);
+        $request = $this->options->before->__invoke(
+            $request->withAttribute($this->options->attribute, $jwtDecodedToken),
+            $jwtDecodedToken,
+        );
 
-        /* Modify $request before calling next middleware. */
-        $request = $this->options->before->__invoke($request, $jwtDecodedToken);
+        return $this->options->after->__invoke($handler->handle($request), $jwtDecodedToken);
+    }
 
-        /* Everything ok, call next middleware. */
-        $response = $handler->handle($request);
+    /**
+     * HTTP allowed only if secure is false or server is in relaxed array.
+     */
+    private function isConfigurationSecure(ServerRequestInterface $request): bool
+    {
+        if ($request->getUri()->getScheme() === 'https') {
+            return true;
+        }
 
-        /* Modify $response before returning. */
-        return $this->options->after->__invoke($response, $jwtDecodedToken);
+        if ($this->options->secure === false) {
+            return true;
+        }
+
+        return in_array($request->getUri()->getHost(), $this->options->relaxed);
     }
 }

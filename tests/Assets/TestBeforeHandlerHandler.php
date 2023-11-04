@@ -26,29 +26,18 @@ SOFTWARE.
 
 */
 
-/**
- * @see       https://github.com/tuupola/slim-jwt-auth
- * @see       https://appelsiini.net/projects/slim-jwt-auth
- */
+/** @see       https://github.com/tuupola/slim-jwt-auth */
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Tests\Middleware\Assets;
 
+use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ServerRequestInterface;
+use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
 
-use function in_array;
-
-/**
- * Rule to decide by HTTP verb whether the request should be authenticated or not.
- */
-final class RequestMethodRule implements RuleInterface
+class TestBeforeHandlerHandler implements JwtAuthentificationBeforeHandler
 {
-    /** @param string[] $ignore */
-    public function __construct(private readonly array $ignore = ['OPTIONS'])
+    public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
     {
-    }
-
-    public function __invoke(ServerRequestInterface $request): bool
-    {
-        return ! in_array($request->getMethod(), $this->ignore);
+        return $request->withAttribute('test', 'invoke');
     }
 }

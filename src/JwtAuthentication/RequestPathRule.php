@@ -2,40 +2,12 @@
 
 declare(strict_types=1);
 
-/*
-
-Copyright (c) 2015-2022 Mika Tuupola
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
-
-/**
- * @see       https://github.com/tuupola/slim-jwt-auth
- * @see       https://appelsiini.net/projects/slim-jwt-auth
- */
-
 namespace Tuupola\Middleware\JwtAuthentication;
 
 use Psr\Http\Message\ServerRequestInterface;
 
 use function array_filter;
+use function array_map;
 use function explode;
 use function implode;
 use function preg_match;
@@ -44,40 +16,69 @@ use function rtrim;
 /**
  * Rule to decide by request path whether the request should be authenticated or not.
  */
-
 final class RequestPathRule implements RuleInterface
 {
+    /** @var string[] */
+    private readonly array $mustBeAuthOnUri;
+    /** @var string[] */
+    private readonly array $ignoreAuthOnUri;
+
     /**
-     * @param string[] $path
-     * @param string[] $ignore
+     * @param string[] $mustBeAuthOnUri
+     * @param string[] $ignoreAuthOnUri
      */
     public function __construct(
-        private readonly array $path = ['/'],
-        private readonly array $ignore = []
+        array $mustBeAuthOnUri = ['/'],
+        array $ignoreAuthOnUri = []
     ) {
+        $this->mustBeAuthOnUri = array_map(static fn (string $mustBeAuthOnUri): string => rtrim($mustBeAuthOnUri, '/'), $mustBeAuthOnUri);
+        $this->ignoreAuthOnUri = array_map(static fn (string $ignoreAuthOnUri): string => rtrim($ignoreAuthOnUri, '/'), $ignoreAuthOnUri);
     }
 
     public function __invoke(ServerRequestInterface $request): bool
     {
-        $uri = '/' . $request->getUri()->getPath();
-        $uri = '/' . implode('/', array_filter(explode('//', $uri)));
+        $uri = '/' . implode(
+            '/',
+            array_filter(explode('//', '/' . $request->getUri()->getPath())),
+        );
 
-        /* If request path is matches ignore should not authenticate. */
-        foreach ($this->ignore as $ignore) {
-            $ignore = rtrim($ignore, '/');
-            if (! ! preg_match('@^' . $ignore . '(/.*)?$@', $uri)) {
-                return false;
-            }
+        if ($this->shouldIgnoreAuthOnUri($uri)) {
+            return false;
         }
 
-        /* Otherwise check if path matches and we should authenticate. */
-        foreach ($this->path as $path) {
-            $path = rtrim($path, '/');
-            if (! ! preg_match('@^' . $path . '(/.*)?$@', $uri)) {
+        return $this->shouldBeAuthenticate($uri);
+    }
+
+    /**
+     * If request path is matches ignore should not authenticate.
+     */
+    private function shouldIgnoreAuthOnUri(string $uri): bool
+    {
+        foreach ($this->ignoreAuthOnUri as $ignoreAuthOnUri) {
+            if ($this->match($ignoreAuthOnUri, $uri)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Otherwise check if path matches and we should authenticate.
+     */
+    private function shouldBeAuthenticate(string $uri): bool
+    {
+        foreach ($this->mustBeAuthOnUri as $mustBeAuthOnUri) {
+            if ($this->match($mustBeAuthOnUri, $uri)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function match(string $value, string $uri): bool
+    {
+        return ! ! preg_match('@^' . $value . '(/.*)?$@', $uri);
     }
 }

@@ -8,7 +8,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
 
-interface JwtAuthentificationError
+interface JwtAuthentificationAclError
 {
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface;
 }

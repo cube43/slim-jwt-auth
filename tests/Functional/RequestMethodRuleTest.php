@@ -35,7 +35,7 @@ namespace Tuupola\Tests\Middleware;
 
 use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Tuupola\Middleware\JwtAuthentication\RequestMethodRule;
+use Tuupola\Middleware\JwtAuthentication\IgnoreHttpMethodRule;
 
 /** @psalm-suppress UnusedClass */
 class RequestMethodRuleTest extends TestCase
@@ -49,7 +49,7 @@ class RequestMethodRuleTest extends TestCase
             'OPTIONS',
         );
 
-        $rule = new RequestMethodRule();
+        $rule = new IgnoreHttpMethodRule();
 
         self::assertFalse($rule($request));
     }
@@ -63,7 +63,7 @@ class RequestMethodRuleTest extends TestCase
             'POST',
         );
 
-        $rule = new RequestMethodRule();
+        $rule = new IgnoreHttpMethodRule();
 
         self::assertTrue($rule($request));
     }
@@ -77,7 +77,7 @@ class RequestMethodRuleTest extends TestCase
             'GET',
         );
 
-        $rule = new RequestMethodRule();
+        $rule = new IgnoreHttpMethodRule();
 
         self::assertTrue($rule($request));
     }
@@ -91,7 +91,7 @@ class RequestMethodRuleTest extends TestCase
             'GET',
         );
 
-        $rule = new RequestMethodRule(['GET']);
+        $rule = new IgnoreHttpMethodRule(['GET']);
 
         self::assertFalse($rule($request));
     }

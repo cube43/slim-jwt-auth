@@ -7,9 +7,9 @@ namespace Tuupola\Middleware\JwtAuthentication;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
-use Tuupola\Middleware\JwtAuthentificationError;
+use Tuupola\Middleware\JwtAuthentificationAclError;
 
-class NullError implements JwtAuthentificationError
+class NullAclError implements JwtAuthentificationAclError
 {
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
     {
