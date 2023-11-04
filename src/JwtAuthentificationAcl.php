@@ -8,21 +8,13 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Tuupola\Http\Factory\ResponseFactory;
 
 final class JwtAuthentificationAcl implements MiddlewareInterface
 {
     public function __construct(
-        private readonly JwtAuthenticationOption $options
+        private readonly JwtAuthenticationOption $options,
+        private readonly ResponseInterface $response,
     ) {
-    }
-
-    public function __invoke(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        callable $next
-    ): ResponseInterface {
-        return $this->process($request, new CallableHandler($next, $response));
     }
 
     /**
@@ -36,7 +28,7 @@ final class JwtAuthentificationAcl implements MiddlewareInterface
         }
 
         if ($request->getAttribute($this->options->attribute) === null) {
-            return $this->options->error->__invoke($request, (new ResponseFactory())->createResponse(401), NotAuthorized::create());
+            return $this->options->error->__invoke($request, $this->response->withStatus(401), NotAuthorized::create());
         }
 
         return $handler->handle($request);
