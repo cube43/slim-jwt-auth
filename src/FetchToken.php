@@ -11,9 +11,7 @@ use function array_key_exists;
 use function is_string;
 use function preg_match;
 
-/**
- * @internal
- */
+/** @internal */
 final class FetchToken
 {
     public function __construct(

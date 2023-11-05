@@ -10,9 +10,7 @@ use Lcobucci\JWT\Token\Plain;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-/**
- * @internal
- */
+/** @internal */
 final class DecodeToken
 {
     public function __construct(
