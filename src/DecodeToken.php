@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Tuupola\Middleware;
 
 use DateTimeImmutable;
-use Exception;
 use Lcobucci\JWT\Parser as ParserInterface;
 use Lcobucci\JWT\Token\Plain;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
+/**
+ * @internal
+ */
 final class DecodeToken
 {
     public function __construct(
@@ -23,6 +25,8 @@ final class DecodeToken
      * Decode the token.
      *
      * @param non-empty-string $token
+     *
+     * @throw UnableToDecodeToken
      */
     public function __invoke(string $token): Plain
     {
@@ -30,16 +34,16 @@ final class DecodeToken
             $tokenDecoded = $this->parser->parse($token);
 
             if ($tokenDecoded->isExpired(new DateTimeImmutable())) {
-                throw new Exception('Token expired');
+                throw TokenExpired::create();
             }
 
             if (! ($tokenDecoded instanceof Plain)) {
-                throw new Exception('Token not signed');
+                throw TokenNotSigned::create();
             }
         } catch (Throwable $exception) {
-            $this->logger->warning($exception->getMessage(), [$token]);
+            $this->logger->warning($exception->getMessage(), ['token' => $token]);
 
-            throw $exception;
+            throw UnableToDecodeToken::create($exception);
         }
 
         return $tokenDecoded;

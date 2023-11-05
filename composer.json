@@ -34,6 +34,7 @@
         "phpstan/phpstan": "^1.10.40",
         "phpunit/phpunit": "^10.4.2",
         "psalm/plugin-phpunit": "^0.18.4",
+        "thecodingmachine/safe": "^2.5",
         "vimeo/psalm": "^5.15"
     },
     "autoload": {

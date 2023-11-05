@@ -25,7 +25,7 @@ final class JwtAuthentificationAcl implements MiddlewareInterface
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if ($this->shouldAuthenticate($request) === false) {
+        if (! $this->shouldAuthenticate($request)) {
             return $handler->handle($request);
         }
 

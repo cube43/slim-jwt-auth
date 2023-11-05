@@ -31,8 +31,8 @@ use Tuupola\Tests\Middleware\Assets\TestAfterHandlerHandler;
 use Tuupola\Tests\Middleware\Assets\TestBeforeHandlerHandler;
 
 use function assert;
-use function fopen;
 use function json_encode;
+use function Safe\fopen;
 
 /** @psalm-suppress UnusedClass */
 class JwtAuthenticationTest extends TestCase
@@ -273,7 +273,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $logger = self::createMock(LoggerInterface::class);
-        $logger->expects(self::once())->method('warning')->with('Token not signed', [self::$acmeToken]);
+        $logger->expects(self::once())->method('warning')->with('Token not signed', ['token' => self::$acmeToken]);
 
         $token = self::createMock(Token::class);
         $token->expects(self::once())->method('isExpired')->willReturn(false);
@@ -382,7 +382,7 @@ class JwtAuthenticationTest extends TestCase
         };
 
         $logger = self::createMock(LoggerInterface::class);
-        $logger->expects(self::once())->method('warning')->with('Token expired', [self::$expired]);
+        $logger->expects(self::once())->method('warning')->with('Token expired', ['token' => self::$expired]);
         $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));

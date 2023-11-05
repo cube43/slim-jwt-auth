@@ -14,7 +14,6 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
-use Throwable;
 
 use function in_array;
 use function sprintf;
@@ -52,7 +51,7 @@ final class JwtAuthentication implements MiddlewareInterface
 
         try {
             $jwtDecodedToken = $this->decodeToken->__invoke($token);
-        } catch (Throwable) {
+        } catch (UnableToDecodeToken) {
             return $handler->handle($request);
         }
 
