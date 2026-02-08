@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tuupola\Middleware\JwtAuthentication;
 
+use Override;
 use Psr\Http\Message\ServerRequestInterface;
 
 use function array_filter;
@@ -16,12 +17,12 @@ use function rtrim;
 /**
  * Rule to decide by request path whether the request should be authenticated or not.
  */
-final class RequestPathRule implements RuleInterface
+final readonly class RequestPathRule implements RuleInterface
 {
     /** @var string[] */
-    private readonly array $mustBeAuthOnUri;
+    private array $mustBeAuthOnUri;
     /** @var string[] */
-    private readonly array $ignoreAuthOnUri;
+    private array $ignoreAuthOnUri;
 
     /**
      * @param string[] $mustBeAuthOnUri
@@ -35,6 +36,7 @@ final class RequestPathRule implements RuleInterface
         $this->ignoreAuthOnUri = array_map(static fn (string $ignoreAuthOnUri): string => rtrim($ignoreAuthOnUri, '/'), $ignoreAuthOnUri);
     }
 
+    #[Override]
     public function __invoke(ServerRequestInterface $request): bool
     {
         $uri = '/' . implode(

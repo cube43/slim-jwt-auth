@@ -6,7 +6,7 @@ namespace Tuupola\Middleware;
 
 use RuntimeException;
 
-class TokenNotFound extends RuntimeException
+final class TokenNotFound extends RuntimeException
 {
     public static function create(): self
     {

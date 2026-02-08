@@ -2,22 +2,20 @@
 <phpunit
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   colors="true"
-  stopOnError="false"
-  stopOnFailure="false"
-  stopOnIncomplete="false"
-  stopOnSkipped="false"
+  displayDetailsOnPhpunitDeprecations="true"
+  displayDetailsOnAllIssues="true"
   bootstrap="vendor/autoload.php"
   xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
   cacheDirectory=".phpunit.cache">
   <coverage/>
   <testsuites>
     <testsuite name="all">
-      <directory suffix="Test.php">tests/</directory>
+      <directory>tests/</directory>
     </testsuite>
   </testsuites>
   <source>
     <include>
-      <directory suffix=".php">src</directory>
+      <directory>src</directory>
     </include>
   </source>
 </phpunit>

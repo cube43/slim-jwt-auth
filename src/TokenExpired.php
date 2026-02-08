@@ -6,7 +6,7 @@ namespace Tuupola\Middleware;
 
 use RuntimeException;
 
-class TokenExpired extends RuntimeException
+final class TokenExpired extends RuntimeException
 {
     public static function create(): self
     {

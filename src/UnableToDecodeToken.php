@@ -7,7 +7,7 @@ namespace Tuupola\Middleware;
 use RuntimeException;
 use Throwable;
 
-class UnableToDecodeToken extends RuntimeException
+final class UnableToDecodeToken extends RuntimeException
 {
     public static function create(Throwable $previous): self
     {

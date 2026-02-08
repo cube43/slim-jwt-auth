@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Tests\Middleware;
+namespace Tuupola\Tests\Middleware\Functional;
 
 use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
 use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
 
 /** @psalm-suppress UnusedClass */
-class RequestPathRuleTest extends TestCase
+final class RequestPathRuleTest extends TestCase
 {
     public function testWrongUri(): void
     {

@@ -20,11 +20,12 @@ lint: vendor
 	vendor/bin/phpcs
 
 unit: vendor
-	vendor/bin/phpunit --testdox --coverage-text --coverage-clover=coverage.xml --coverage-html=./report/
+	vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-html=./report/
 
 static: vendor
 	vendor/bin/phpstan
 	vendor/bin/psalm
+	vendor/bin/mago analyse
 
 watch: vendor
 	find . -name "*.php" -not -path "./vendor/*" -o -name "*.json" -not -path "./vendor/*" | entr -c make test

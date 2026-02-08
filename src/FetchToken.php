@@ -6,48 +6,40 @@ namespace Tuupola\Middleware;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
+use Tuupola\Middleware\JwtAuthentication\FetchTokenMethod;
 
-use function array_key_exists;
-use function is_string;
-use function preg_match;
+use function sprintf;
 
 /** @internal */
-final class FetchToken
+final readonly class FetchToken
 {
+    /** @var FetchTokenMethod[] */
+    private readonly array $fetchTokenMethods;
+
     public function __construct(
-        private readonly JwtAuthenticationOption $options,
-        private readonly LoggerInterface $logger
+        private LoggerInterface $logger,
+        FetchTokenMethod ...$fetchTokenMethods
     ) {
+        $this->fetchTokenMethods = $fetchTokenMethods;
     }
 
     /**
      * Fetch the access token.
      *
      * @return non-empty-string
+     *
+     * @throw TokenNotFound
      */
     public function __invoke(ServerRequestInterface $request): string
     {
-        /* Check for token in header. */
-        $header = $request->getHeaderLine($this->options->header);
+        foreach ($this->fetchTokenMethods as $fetchTokenMethod) {
+            $token = self::produceNonEmptyString($fetchTokenMethod->__invoke($request));
 
-        if (empty($header) === false) {
-            if (preg_match($this->options->regexp, $header, $matches)) {
-                $this->logger->debug('Using token from request header');
+            if ($token !== null) {
+                $this->logger->debug(sprintf('Using token from %s', $fetchTokenMethod->name()));
 
-                return $this->produceNonEmptyString($matches[1]);
+                return $token;
             }
-        }
-
-        /* Token not found in header try a cookie. */
-        $cookieParams = $request->getCookieParams();
-
-        if (array_key_exists($this->options->cookie, $cookieParams) && is_string($cookieParams[$this->options->cookie])) {
-            $this->logger->debug('Using token from cookie');
-            if (preg_match($this->options->regexp, $cookieParams[$this->options->cookie], $matches)) {
-                return $this->produceNonEmptyString($matches[1]);
-            }
-
-            return $this->produceNonEmptyString($cookieParams[$this->options->cookie]);
         }
 
         /* If everything fails log and throw. */
@@ -56,13 +48,9 @@ final class FetchToken
         throw TokenNotFound::create();
     }
 
-    /** @return non-empty-string */
-    private function produceNonEmptyString(string $value): string
+    /** @return non-empty-string|null */
+    private static function produceNonEmptyString(string|null $value): string|null
     {
-        if (empty($value)) {
-            throw TokenNotFound::create();
-        }
-
-        return $value;
+        return $value === '' || $value === null ? null : $value;
     }
 }

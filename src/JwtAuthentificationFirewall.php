@@ -4,25 +4,27 @@ declare(strict_types=1);
 
 namespace Tuupola\Middleware;
 
+use Override;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Tuupola\Middleware\JwtAuthentication\RuleInterface;
 
-final class JwtAuthentificationAcl implements MiddlewareInterface
+final readonly class JwtAuthentificationFirewall implements MiddlewareInterface
 {
     /** @var RuleInterface[] */
-    private readonly array $rules;
+    private array $rules;
 
     public function __construct(
-        private readonly JwtAuthenticationOption $options,
-        private readonly ResponseInterface $response,
+        private JwtAuthenticationOption $options,
+        private ResponseInterface $response,
         RuleInterface ...$rules
     ) {
         $this->rules = $rules;
     }
 
+    #[Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if (! $this->shouldAuthenticate($request)) {
@@ -30,7 +32,7 @@ final class JwtAuthentificationAcl implements MiddlewareInterface
         }
 
         if ($request->getAttribute($this->options->attribute) === null) {
-            return $this->options->error->__invoke($request, $this->response->withStatus(401), NotAuthorized::create());
+            return $this->options->unAuthorizedHandler->__invoke($request, $this->response->withStatus(401), NotAuthorized::create());
         }
 
         return $handler->handle($request);

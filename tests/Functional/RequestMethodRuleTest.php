@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Tests\Middleware;
+namespace Tests\Middleware\Functional;
 
 use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
 use Tuupola\Middleware\JwtAuthentication\IgnoreHttpMethodRule;
 
 /** @psalm-suppress UnusedClass */
-class RequestMethodRuleTest extends TestCase
+final class RequestMethodRuleTest extends TestCase
 {
     public function testShouldNotAuthenticateOptions(): void
     {

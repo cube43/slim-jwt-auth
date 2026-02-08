@@ -6,7 +6,7 @@ namespace Tuupola\Middleware;
 
 use RuntimeException;
 
-class TokenNotSigned extends RuntimeException
+final class TokenNotSigned extends RuntimeException
 {
     public static function create(): self
     {

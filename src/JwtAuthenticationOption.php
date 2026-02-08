@@ -6,28 +6,28 @@ namespace Tuupola\Middleware;
 
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
-use Tuupola\Middleware\JwtAuthentication\NullAclError;
 use Tuupola\Middleware\JwtAuthentication\NullAfterHandler;
 use Tuupola\Middleware\JwtAuthentication\NullBeforeHandler;
+use Tuupola\Middleware\JwtAuthentication\NullUnAuthorizedHandler;
 
-class JwtAuthenticationOption
+final readonly class JwtAuthenticationOption
 {
     /**
      * @param string[]         $relaxed
      * @param non-empty-string $regexp
      */
     private function __construct(
-        public readonly Key $secret,
-        public readonly bool $secure,
-        public readonly array $relaxed,
-        public readonly Signer $algorithm,
-        public readonly string $header,
-        public readonly string $regexp,
-        public readonly string $cookie,
-        public readonly string $attribute,
-        public readonly JwtAuthentificationBeforeHandler $before,
-        public readonly JwtAuthentificationAfterHandler $after,
-        public readonly JwtAuthentificationAclError $error
+        public Key $secret,
+        public bool $secure,
+        public array $relaxed,
+        public Signer $algorithm,
+        public string $header,
+        public string $regexp,
+        public string $cookie,
+        public string $attribute,
+        public JwtAuthentificationBeforeHandler $before,
+        public JwtAuthentificationAfterHandler $after,
+        public JwtAuthentificationUnAuthorizedHandler $unAuthorizedHandler,
     ) {
     }
 
@@ -44,7 +44,7 @@ class JwtAuthenticationOption
             'token',
             new NullBeforeHandler(),
             new NullAfterHandler(),
-            new NullAclError(),
+            new NullUnAuthorizedHandler(),
         );
     }
 
@@ -64,7 +64,7 @@ class JwtAuthenticationOption
             $attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -84,7 +84,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -106,7 +106,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -126,7 +126,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -146,7 +146,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -166,14 +166,14 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
     /**
      * Set the error handler.
      */
-    public function withError(JwtAuthentificationAclError $error): self
+    public function withUnAuthorized(JwtAuthentificationUnAuthorizedHandler $unAuthorized): self
     {
         return new self(
             $this->secret,
@@ -186,7 +186,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $error,
+            $unAuthorized,
         );
     }
 
@@ -206,7 +206,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -226,7 +226,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -248,7 +248,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 
@@ -268,7 +268,7 @@ class JwtAuthenticationOption
             $this->attribute,
             $this->before,
             $this->after,
-            $this->error,
+            $this->unAuthorizedHandler,
         );
     }
 }

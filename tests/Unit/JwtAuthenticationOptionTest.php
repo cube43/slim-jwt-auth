@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Unit;
+namespace Tuupola\Tests\Middleware\Unit;
 
 use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Tuupola\Middleware\JwtAuthenticationOption;
 
 /** @psalm-suppress UnusedClass */
-class JwtAuthenticationOptionTest extends TestCase
+final class JwtAuthenticationOptionTest extends TestCase
 {
     public function testDefaultValue(): void
     {

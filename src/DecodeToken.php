@@ -10,13 +10,17 @@ use Lcobucci\JWT\Token\Plain;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-/** @internal */
-final class DecodeToken
+final readonly class DecodeToken
 {
     public function __construct(
-        private readonly ParserInterface $parser,
-        private readonly LoggerInterface $logger,
+        private ParserInterface $parser,
+        private LoggerInterface $logger,
     ) {
+    }
+
+    public function withLogger(LoggerInterface $logger): self
+    {
+        return new self($this->parser, $logger);
     }
 
     /**

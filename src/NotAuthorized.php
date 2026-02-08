@@ -6,7 +6,7 @@ namespace Tuupola\Middleware;
 
 use RuntimeException;
 
-class NotAuthorized extends RuntimeException
+final class NotAuthorized extends RuntimeException
 {
     public static function create(): self
     {
