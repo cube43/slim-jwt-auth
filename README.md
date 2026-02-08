@@ -1,4 +1,4 @@
-# slim-jwt-auth Fork
+# Slim JWT Auth
 
 [![Build Status](https://github.com/cube43/slim-jwt-auth/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/cube43/slim-jwt-auth/actions/workflows/continuous-integration.yml)
 [![Type Coverage](https://shepherd.dev/github/cube43/slim-jwt-auth/coverage.svg)](https://shepherd.dev/github/cube43/slim-jwt-auth)
@@ -6,48 +6,219 @@
 [![Latest Stable Version](https://poser.pugx.org/cube43/slim-jwt-auth/v/stable)](https://packagist.org/packages/cube43/slim-jwt-auth)
 [![License](https://poser.pugx.org/cube43/slim-jwt-auth/license)](https://packagist.org/packages/cube43/slim-jwt-auth)
 
-## Introduction
+PSR-7 and PSR-15 Middleware for JWT Authentication. This is a strict-typed, modern rewrite of the popular JWT middleware, designed for Slim Framework and other PSR-15 compliant frameworks.
 
-This repository is a fork of the [Original Project](https://github.com/tuupola/slim-jwt-auth), and it is important to note that the primary purpose of this fork is not to replace or compete with the original project. Instead, this fork serves as a testing ground to explore various possibilities, experiment with new ideas, and gain a deeper understanding of the original project's capabilities.
+## Installation
 
-## Purpose
+Install via Composer:
 
-The objectives of this fork are as follows:
+```bash
+composer require cube43/slim-jwt-auth
+```
 
-- **Exploration:** This fork allows us to explore the original project's functionality, features, and codebase more extensively. By doing so, we can identify areas for improvement or optimization.
+## Usage
 
-- **Experimentation:** We will use this fork to conduct experiments, test different configurations, and potentially implement new features or modifications. These changes are not intended for production use but rather to gain insights and experience.
+This library splits the JWT logic into two separate middlewares to provide better flexibility:
 
-## Contributions
+1.  **`JwtAuthentication`**: Parses and validates the token. If valid, it attaches the decoded token to the request tokenAttributeNames. It does **not** block the request if the token is missing (it acts as a hydrator).
+2.  **`JwtAuthentificationFirewall`**: Checks if the request requires authentication (based on rules). If it does, and no valid token was found by the previous middleware, it returns a 401 Unauthorized response.
 
-Contributions to this fork are welcome and encouraged. However, please keep in mind the following guidelines:
+### Complete Example
 
-- **Experimental:** Contributions should be experimental in nature and may not necessarily align with the long-term goals of the original project.
+Here is a complete example setup for Slim 4, including custom handlers and rules:
 
-## Getting Started
+```php
+use Slim\Factory\AppFactory;
+use Tuupola\Middleware\JwtAuthentication;
+use Tuupola\Middleware\JwtAuthenticationOption;
+use Tuupola\Middleware\JwtAuthentificationFirewall;
+use Tuupola\Middleware\JwtAuthentication\FetchTokenFormHeader;
+use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
+use Tuupola\Middleware\JwtAuthentificationUnAuthorizedHandler;
+use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
+use Lcobucci\JWT\Signer\Key\InMemory;
+use Lcobucci\JWT\Token\Plain;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Laminas\Diactoros\Response;
+use Throwable;
 
-To get started with this fork, you can follow these steps:
+$app = AppFactory::create();
 
-- **Clone the Repository:**
+// 1. Configure Options
+$options = JwtAuthenticationOption::create(InMemory::plainText('super-secret-key'))
+    ->withTokenAttributeName('jwt')
+    ->withAllowedInsecureHosts(['localhost', '127.0.0.1'])
+    ->withBeforeHandleRequestWhenTokenAvailable(new class implements JwtAuthentificationBeforeHandler {
+        public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
+        {
+            assert($request->getAttribute('jwt') === $token);
+            return $request->withAttribute('user_uuid', $token->claims()->get('uuid'));
+        }
+    });
 
-`git clone https://github.com/cube43/slim-jwt-auth`
+// 2. Define Rules (e.g. protect /api, but allow /api/login)
+$pathRule = new RequestPathRule(
+    path: ['/api'],
+    ignore: ['/api/login', '/api/token']
+);
 
-- **Explore and Experiment:**
+// 3. Define Unauthorized Handler (JSON response)
+$unauthorizedHandler = new class implements JwtAuthentificationUnAuthorizedHandler {
+    public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
+    {
+        $response->getBody()->write(json_encode(['status' => 'error', 'message' => 'Unauthorized']));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+};
 
-Feel free to explore the codebase, make changes, and experiment with different configurations. However, please ensure that any modifications you make do not negatively impact the original project.
+// 4. Add Middleware (LIFO: Add Firewall first, then Authentication)
 
-## Documentation
+// Firewall: Checks rules and blocks if no token is present when required
+// It runs LAST in the stack (executed AFTER Authentication)
+$app->add(new JwtAuthentificationFirewall(
+    $options,
+    new Response(),
+    $unauthorizedHandler,
+    $pathRule
+));
 
-Please note that comprehensive documentation for this fork is currently not available. As this project is primarily for experimentation and testing purposes, documentation may be limited or incomplete. Contributors are encouraged to document any significant findings, changes, or usage instructions in the README or in separate documentation files to assist others in understanding the project.
+// Authentication: Extracts and decodes token
+// It runs FIRST in the stack (executed BEFORE Firewall)
+$app->add(JwtAuthentication::create(
+    $options,
+    new FetchTokenFormHeader()
+));
 
-## License
+$app->run();
+```
 
-This project is released under the same license as the original project (if applicable). Please refer to the original project's license for details.
+> **Important:** In Slim, middleware is executed Last-In-First-Out. You must ensure `JwtAuthentication` runs **before** `JwtAuthentificationFirewall` so the token is available when the firewall checks for it.
 
-## Disclaimer
+### Configuration Options
 
-This fork is not intended to replace or compete with the original project. It serves solely as a testing and experimentation ground. Any production use of the original project should still be done through the original repository.
+The `JwtAuthenticationOption` class uses a fluent interface for configuration.
 
-## Credits
+```php
+$options = JwtAuthenticationOption::create(InMemory::plainText('secret'))
+    ->withTokenAttributeName('jwt')       // Attribute name for the decoded token
+    ->withEnforceHttps(true)           // Require HTTPS
+    ->withAllowedInsecureHosts(['localhost']); // Allow HTTP on these hosts
+```
 
-This fork is maintained by [cube43](https://github.com/cube43).
+### Token Extraction
+
+You define how the token is extracted when creating the `JwtAuthentication` middleware. You can pass multiple extractors.
+
+```php
+use Tuupola\Middleware\JwtAuthentication\FetchTokenFormHeader;
+use Tuupola\Middleware\JwtAuthentication\FetchTokenFormCookie;
+
+$app->add(JwtAuthentication::create(
+    $options,
+    new FetchTokenFormHeader('Authorization', '/Bearer\s+(.*)$/i'),
+    new FetchTokenFormCookie('auth_token')
+));
+```
+
+### Firewall Rules
+
+To define which requests require authentication, pass `RuleInterface` implementations to the `JwtAuthentificationFirewall` constructor.
+
+#### Path Rule
+Restrict authentication to specific paths, or ignore specific paths.
+
+```php
+use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
+
+// Authenticate everything under /api, but ignore /api/login
+$pathRule = new RequestPathRule(
+    path: ['/api'],
+    ignore: ['/api/login']
+);
+
+$app->add(new JwtAuthentificationFirewall(
+    $options,
+    $response,
+    new NullUnAuthorizedHandler(), // Default handler
+    $pathRule
+));
+```
+
+#### Method Rule
+Ignore specific HTTP methods (e.g., OPTIONS).
+
+```php
+use Tuupola\Middleware\JwtAuthentication\IgnoreHttpMethodRule;
+
+$methodRule = new IgnoreHttpMethodRule(['OPTIONS']);
+
+$app->add(new JwtAuthentificationFirewall(
+    $options,
+    $response,
+    new NullUnAuthorizedHandler(),
+    $pathRule,
+    $methodRule
+));
+```
+
+### Handlers
+
+You can customize behavior using handlers.
+
+#### Before Handler
+Modify the request after the token is decoded but before the next middleware.
+
+```php
+use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
+use Lcobucci\JWT\Token\Plain;
+
+$options = $options->withBeforeHandleRequestWhenTokenAvailable(new class implements JwtAuthentificationBeforeHandler {
+    public function __invoke(ServerRequestInterface $request, Plain $token): ServerRequestInterface
+    {
+        assert($request->getAttribute('jwt') === $token);
+        return $request->withAttribute('user_id', $token->claims()->get('uid'));
+    }
+});
+```
+
+#### After Handler
+Modify the response before returning it.
+
+```php
+use Tuupola\Middleware\JwtAuthentificationAfterHandler;
+
+$options = $options->withAfterHandleRequestWhenTokenAvailable(new class implements JwtAuthentificationAfterHandler {
+    public function __invoke(ResponseInterface $response, Plain $token): ResponseInterface
+    {
+        return $response->withHeader('X-Auth-Success', 'true');
+    }
+});
+```
+
+#### Unauthorized Handler
+Customize the response when authentication fails (used by the Firewall).
+
+```php
+use Tuupola\Middleware\JwtAuthentificationUnAuthorizedHandler;
+
+$firewall = new JwtAuthentificationFirewall(
+    $options,
+    $response,
+    new class implements JwtAuthentificationUnAuthorizedHandler {
+        public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
+        {
+            $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+            return $response->withHeader('Content-Type', 'application/json');
+        }
+    }
+);
+```
+
+## Security
+
+By default, the middleware throws a `RuntimeException` if you attempt to use it over HTTP (insecure). To allow HTTP for development, use `withAllowedInsecureHosts`:
+
+```php
+$options = $options->withAllowedInsecureHosts(['localhost', '127.0.0.1']);
+```

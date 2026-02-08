@@ -1,92 +1,100 @@
-# Updgrading from 2.x to 3.x
+# Upgrading from 6.x to 7.x
 
-## New namespace
-For most cases it is enough just to update the classname. Instead of using the old `Slim\Middleware` namespace:
+La version 7.x introduit des changements majeurs dans l'architecture du middleware, passant d'une configuration basée sur des tableaux à des objets typés, et séparant la logique d'authentification de la logique de pare-feu (Firewall).
 
+## 1. Configuration via `JwtAuthenticationOption`
+
+L'ancienne configuration via un tableau (array) passé au constructeur est remplacée par l'utilisation de la classe `Tuupola\Middleware\JwtAuthenticationOption`.
+
+**Avant (6.x) :**
 ```php
-$app->add(new Slim\Middleware\JwtAuthentication([
-    "secret" => "supersecretkeyyoushouldnotcommittogithub"
+$app->add(new JwtAuthentication([
+    "secret" => "supersecret",
+    "tokenAttributeName" => "jwt",
+    "secure" => true,
 ]));
 ```
 
-You should now use `Tuupola\Middleware` instead:
-
+**Après (7.x) :**
 ```php
-$app->add(new Tuupola\Middleware\JwtAuthentication([
-    "secret" => "supersecretkeyyoushouldnotcommittogithub"
-]));
+use Tuupola\Middleware\JwtAuthenticationOption;
+use Lcobucci\JWT\Signer\Key\InMemory;
 
+$options = JwtAuthenticationOption::create(InMemory::plainText('supersecret'))
+    ->withTokenAttributeName('jwt')
+    ->withSecure(true);
 ```
 
-## Changed parameter names
+Notez l'utilisation de `Lcobucci\JWT\Signer\Key\InMemory` pour définir la clé secrète.
 
-Parameters `callback` and `passthrough` were renamed to `before` and `ignore`. In other words instead of doing:
+## 2. Séparation du Middleware
 
-```php
-$app->add(new Tuupola\Middleware\JwtAuthentication([
-    "passthrough" => ["/token"],
-    "callback" => function ($request, $response, $arguments) {
-        print_r($arguments);
-    }
-]));
-```
+Le middleware a été scindé en deux parties distinctes :
 
-You should now do the following instead. Note also that `$response` object is not bassed to `before` anymore. The `before` handler should return ``Psr\Http\Message\ServerRequestInterface`. Anything else will be ignored.
+1. **`JwtAuthentication`** : Responsable uniquement de l'extraction, du décodage et de la validation du token. Il n'interrompt pas la requête si le token est manquant (sauf erreur de décodage critique).
+2. **`JwtAuthentificationFirewall`** : Responsable de bloquer les requêtes non authentifiées (401) selon des règles définies.
+
+Vous devez désormais instancier et ajouter ces deux middlewares (le Firewall en premier pour protéger, ou selon votre logique de stack).
 
 ```php
-$app->add(new Tuupola\Middleware\JwtAuthentication([
-    "ignore" => ["/token"],
-    "before" => function ($request, $arguments) {
-        return $request->withHeader("Foo", "bar");
-    }
-]));
+use Tuupola\Middleware\JwtAuthentication;
+use Tuupola\Middleware\JwtAuthentificationFirewall;
+use Laminas\Diactoros\Response; // Une implémentation de PSR-7 Response est requise
+
+// 1. Créer les options
+$options = JwtAuthenticationOption::create(InMemory::plainText('secret'));
+
+// 2. Ajouter le Firewall (bloque si pas de token valide)
+$app->add(new JwtAuthentificationFirewall($options, new Response()));
+
+// 3. Ajouter l'Authentification (décode le token)
+$app->add(JwtAuthentication::create($options));
 ```
 
-## Changed error handler signature
+## 3. Règles de chemin (Path) et d'exclusion (Ignore)
 
-Error handler signature was changed. In other words instead of doing:
+Les options `path` et `ignore` ne font plus partie de la configuration principale. Elles sont désormais gérées par des règles (`Rule`) passées au constructeur du `JwtAuthentificationFirewall`.
+
+**Avant (6.x) :**
+```php
+new JwtAuthentication([
+    "path" => ["/api", "/admin"],
+    "ignore" => ["/api/login"],
+]);
+```
+
+**Après (7.x) :**
+```php
+use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
+
+// Premier argument : paths, Second argument : ignore
+$pathRule = new RequestPathRule(["/api", "/admin"], ["/api/login"]);
+
+$app->add(new JwtAuthentificationFirewall($options, new Response(), $pathRule));
+```
+
+Pour ignorer certaines méthodes HTTP (comme `OPTIONS`), utilisez `IgnoreHttpMethodRule` :
 
 ```php
-$app->add(new Tuupola\Middleware\JwtAuthentication([
-    "error" => function ($request, $response, $arguments) {
-        print_r($arguments);
-    }
-]));
+use Tuupola\Middleware\JwtAuthentication\IgnoreHttpMethodRule;
+
+$methodRule = new IgnoreHttpMethodRule(["OPTIONS"]);
+$app->add(new JwtAuthentificationFirewall($options, new Response(), $pathRule, $methodRule));
 ```
 
-You should now do the following instead.
+## 4. Gestionnaires (Handlers) : Before, After, Unauthorized
+
+Les callbacks sont maintenant définis via des méthodes fluides sur l'objet `JwtAuthenticationOption` et doivent implémenter des interfaces spécifiques (`JwtAuthentificationBeforeHandler`, `JwtAuthentificationAfterHandler`, `JwtAuthentificationUnAuthorizedHandler`). L'option `error` est renommée `unauthorized`.
+
+**Exemple pour `unauthorized` (anciennement `error`) :**
 
 ```php
-$app->add(new Tuupola\Middleware\JwtAuthentication([
-    "error" => function ($response, $arguments) {
-        return $response->witHeader("Foo", "bar");
-    }
-]));
+$options = JwtAuthenticationOption::create($key)
+    ->withUnAuthorized(new class implements JwtAuthentificationUnAuthorizedHandler {
+        public function __invoke(ServerRequestInterface $request, ResponseInterface $response, Throwable $exception): ResponseInterface
+        {
+            $response->getBody()->write('Unauthorized');
+            return $response->withHeader('Content-Type', 'text/plain');
+        }
+    });
 ```
-
-Note that `error` should now return an instance of `Psr\Http\Message\ResponseInterface`. Anything else will be ignored.
-
-## Most setters are removed
-
-Most public setters and getters were removed. If you had code like following:
-
-```php
-$auth = (new Tuupola\Middleware\JwtAuthentication)
-    ->setPath(["/admin", "/api"])
-    ->setSecret("supersecretkeyyoushouldnotcommittogithub");
-
-$app->add($auth);
-```
-
-Settings should now be passed in constructor instead:
-
-```php
-$app->add(new Tuupola\Middleware\JwtAuthentication([
-    "path" => ["/admin", "/api"],
-    "secret" => "supersecretkeyyoushouldnotcommittogithub"
-]));
-```
-
-## Decoded token is now an array
-
-The decoded token attached to the `$request` object is now an array instead of an object. This might require changes to token handling code.

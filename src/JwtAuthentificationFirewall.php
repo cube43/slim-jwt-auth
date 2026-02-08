@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Tuupola\Middleware\JwtAuthentication\NullUnAuthorizedHandler;
 use Tuupola\Middleware\JwtAuthentication\RuleInterface;
 
 final readonly class JwtAuthentificationFirewall implements MiddlewareInterface
@@ -19,6 +20,7 @@ final readonly class JwtAuthentificationFirewall implements MiddlewareInterface
     public function __construct(
         private JwtAuthenticationOption $options,
         private ResponseInterface $response,
+        private JwtAuthentificationUnAuthorizedHandler $unAuthorizedHandler = new NullUnAuthorizedHandler(),
         RuleInterface ...$rules
     ) {
         $this->rules = $rules;
@@ -31,8 +33,8 @@ final readonly class JwtAuthentificationFirewall implements MiddlewareInterface
             return $handler->handle($request);
         }
 
-        if ($request->getAttribute($this->options->attribute) === null) {
-            return $this->options->unAuthorizedHandler->__invoke($request, $this->response->withStatus(401), NotAuthorized::create());
+        if ($request->getAttribute($this->options->tokenAttributeName) === null) {
+            return $this->unAuthorizedHandler->__invoke($request, $this->response->withStatus(401), NotAuthorized::create());
         }
 
         return $handler->handle($request);

@@ -14,7 +14,7 @@ use function sprintf;
 final readonly class FetchToken
 {
     /** @var FetchTokenMethod[] */
-    private readonly array $fetchTokenMethods;
+    private array $fetchTokenMethods;
 
     public function __construct(
         private LoggerInterface $logger,

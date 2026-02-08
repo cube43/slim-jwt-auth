@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tuupola\Tests\Middleware\Unit;
 
-use Lcobucci\JWT\Signer;
 use Lcobucci\JWT\Signer\Key;
 use PHPUnit\Framework\TestCase;
+use Tuupola\Middleware\AllowedInsecureHosts;
 use Tuupola\Middleware\JwtAuthenticationOption;
+use Tuupola\Middleware\JwtAuthentificationAfterHandler;
+use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
+use Tuupola\Middleware\NullSecurity;
 
 /** @psalm-suppress UnusedClass */
 final class JwtAuthenticationOptionTest extends TestCase
@@ -18,33 +21,23 @@ final class JwtAuthenticationOptionTest extends TestCase
         $sUT    = JwtAuthenticationOption::create($secret);
 
         self::assertSame($secret, $sUT->secret);
-        self::assertSame(true, $sUT->secure);
-        self::assertSame(['localhost', '127.0.0.1'], $sUT->relaxed);
-        self::assertInstanceOf(Signer\Hmac\Sha256::class, $sUT->algorithm);
-        self::assertSame('Authorization', $sUT->header);
-        self::assertSame('/Bearer\s+(.*)$/i', $sUT->regexp);
-        self::assertSame('token', $sUT->cookie);
-        self::assertSame('token', $sUT->attribute);
+        self::assertInstanceOf(AllowedInsecureHosts::class, $sUT->security);
+        self::assertSame('token', $sUT->tokenAttributeName);
 
         $newSecret = self::createMock(Key::class);
-        $algo      = self::createMock(Signer::class);
+        $before    = self::createMock(JwtAuthentificationBeforeHandler::class);
+        $after     = self::createMock(JwtAuthentificationAfterHandler::class);
 
         $sUT = $sUT->withSecret($newSecret);
-        $sUT = $sUT->withSecure(false);
-        $sUT = $sUT->withRelaxed(['toto6']);
-        $sUT = $sUT->withAlgorithm($algo);
-        $sUT = $sUT->withHeader('toto4');
-        $sUT = $sUT->withRegexp('toto2');
-        $sUT = $sUT->withCookie('toto3');
-        $sUT = $sUT->withAttribute('toto');
+        $sUT = $sUT->withTokenAttributeName('toto');
+        $sUT = $sUT->withSecurity(new NullSecurity());
+        $sUT = $sUT->withBeforeHandleRequestWhenTokenAvailable($before);
+        $sUT = $sUT->withAfterHandleRequestWhenTokenAvailable($after);
 
         self::assertSame($newSecret, $sUT->secret);
-        self::assertSame(false, $sUT->secure);
-        self::assertSame(['toto6'], $sUT->relaxed);
-        self::assertSame($algo, $sUT->algorithm);
-        self::assertSame('toto4', $sUT->header);
-        self::assertSame('toto2', $sUT->regexp);
-        self::assertSame('toto3', $sUT->cookie);
-        self::assertSame('toto', $sUT->attribute);
+        self::assertInstanceOf(NullSecurity::class, $sUT->security);
+        self::assertSame('toto', $sUT->tokenAttributeName);
+        self::assertSame($before, $sUT->beforeHandleRequestWhenTokenAvailable);
+        self::assertSame($after, $sUT->afterHandleRequestWhenTokenAvailable);
     }
 }
