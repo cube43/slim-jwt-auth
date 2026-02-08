@@ -26,7 +26,7 @@ final readonly class FetchTokenFormHeader implements FetchTokenMethod
     public function __invoke(ServerRequestInterface $request): null|string
     {
         $header  = $request->getHeaderLine($this->header);
-        $matches = null;
+        $matches = [];
         preg_match($this->regexp, $header, $matches);
 
         return array_key_exists(1, $matches) ? $matches[1] : null;

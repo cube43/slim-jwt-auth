@@ -32,7 +32,7 @@ final readonly class FetchTokenFormCookie implements FetchTokenMethod
             return null;
         }
 
-        $matches = null;
+        $matches = [];
 
         if (preg_match($this->regexp, $cookieParams[$this->cookie], $matches)) {
             return array_key_exists(1, $matches) ? $matches[1] : null;

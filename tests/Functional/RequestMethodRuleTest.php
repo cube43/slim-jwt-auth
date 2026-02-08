@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Middleware\Functional;
+namespace Tuupola\Tests\Middleware\Functional;
 
 use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
