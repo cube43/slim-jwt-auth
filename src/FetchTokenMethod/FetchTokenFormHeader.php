@@ -31,10 +31,4 @@ final readonly class FetchTokenFormHeader implements FetchTokenMethod
 
         return array_key_exists(1, $matches) ? $matches[1] : null;
     }
-
-    #[Override]
-    public function name(): string
-    {
-        return 'request header';
-    }
 }

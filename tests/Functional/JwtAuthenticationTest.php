@@ -97,7 +97,7 @@ final class JwtAuthenticationTest extends TestCase
 
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::never())->method('warning');
-        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+        $logger->expects(self::once())->method('debug')->with('Using token from', ['class' => FetchTokenFormHeader::class]);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
@@ -126,7 +126,7 @@ final class JwtAuthenticationTest extends TestCase
 
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::never())->method('warning');
-        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+        $logger->expects(self::once())->method('debug')->with('Using token from', ['class' => FetchTokenFormHeader::class]);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
@@ -144,7 +144,7 @@ final class JwtAuthenticationTest extends TestCase
     public function testShouldReturn200WithTokenFromCookie(): void
     {
         $request = (new ServerRequest([], [], 'https://example.com/api', 'GET'))
-            ->withCookieParams(['nekot' => self::$acmeToken]);
+            ->withCookieParams(['nekot' => 'Bearer ' . self::$acmeToken]);
 
         $default = static function (): ResponseInterface {
             $response = new Response();
@@ -155,7 +155,7 @@ final class JwtAuthenticationTest extends TestCase
 
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::never())->method('warning');
-        $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
+        $logger->expects(self::once())->method('debug')->with('Using token from', ['class' => FetchTokenFormCookie::class]);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
@@ -215,7 +215,7 @@ final class JwtAuthenticationTest extends TestCase
 
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::never())->method('warning');
-        $logger->expects(self::once())->method('debug')->with('Using token from cookie', []);
+        $logger->expects(self::once())->method('debug')->with('Using token from', ['class' => FetchTokenFormCookie::class]);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 
@@ -385,7 +385,7 @@ final class JwtAuthenticationTest extends TestCase
 
         $logger = self::createMock(LoggerInterface::class);
         $logger->expects(self::once())->method('warning')->with('Token expired', ['token' => self::$expired]);
-        $logger->expects(self::once())->method('debug')->with('Using token from request header', []);
+        $logger->expects(self::once())->method('debug')->with('Using token from', ['class' => FetchTokenFormHeader::class]);
 
         $option = JwtAuthenticationOption::create(InMemory::base64Encoded('mBC5v1sOKVvbdEitdSBenu59nfNfhwkedkJVNabosTw='));
 

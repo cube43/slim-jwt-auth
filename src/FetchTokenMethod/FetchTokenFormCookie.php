@@ -26,24 +26,17 @@ final readonly class FetchTokenFormCookie implements FetchTokenMethod
     #[Override]
     public function __invoke(ServerRequestInterface $request): null|string
     {
-        $cookieParams = $request->getCookieParams();
-
-        if (! array_key_exists($this->cookie, $cookieParams) || ! is_string($cookieParams[$this->cookie])) {
-            return null;
-        }
-
+        $cookie  = $this->getCookieLine($request);
         $matches = [];
+        preg_match($this->regexp, $cookie, $matches);
 
-        if (preg_match($this->regexp, $cookieParams[$this->cookie], $matches)) {
-            return array_key_exists(1, $matches) ? $matches[1] : null;
-        }
-
-        return $cookieParams[$this->cookie];
+        return array_key_exists(1, $matches) ? $matches[1] : null;
     }
 
-    #[Override]
-    public function name(): string
+    private function getCookieLine(ServerRequestInterface $request): string
     {
-        return 'cookie';
+        $cookieParams = $request->getCookieParams();
+
+        return ! array_key_exists($this->cookie, $cookieParams) || ! is_string($cookieParams[$this->cookie]) ? '' : $cookieParams[$this->cookie];
     }
 }

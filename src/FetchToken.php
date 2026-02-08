@@ -9,8 +9,6 @@ use Psr\Log\LoggerInterface;
 use Tuupola\Middleware\Exception\TokenNotFound;
 use Tuupola\Middleware\FetchTokenMethod\FetchTokenMethod;
 
-use function sprintf;
-
 /** @internal */
 final readonly class FetchToken
 {
@@ -28,24 +26,34 @@ final readonly class FetchToken
      * Fetch the access token.
      *
      * @return non-empty-string
-     *
-     * @throw TokenNotFound
      */
     public function __invoke(ServerRequestInterface $request): string
+    {
+        $fetchedToken = $this->getToken($request);
+
+        if ($fetchedToken === null) {
+            /* If everything fails log and throw. */
+            $this->logger->debug('Token not found');
+
+            throw TokenNotFound::create();
+        }
+
+        $this->logger->debug('Using token from', ['class' => $fetchedToken->class]);
+
+        return $fetchedToken->token;
+    }
+
+    /** @throw TokenNotFound */
+    private function getToken(ServerRequestInterface $request): FetchedToken|null
     {
         foreach ($this->fetchTokenMethods as $fetchTokenMethod) {
             $token = $fetchTokenMethod->__invoke($request);
 
             if ($token !== '' && $token !== null) {
-                $this->logger->debug(sprintf('Using token from %s', $fetchTokenMethod->name()));
-
-                return $token;
+                return new FetchedToken($token, $fetchTokenMethod::class);
             }
         }
 
-        /* If everything fails log and throw. */
-        $this->logger->debug('Token not found');
-
-        throw TokenNotFound::create();
+        return null;
     }
 }

@@ -9,6 +9,4 @@ use Psr\Http\Message\ServerRequestInterface;
 interface FetchTokenMethod
 {
     public function __invoke(ServerRequestInterface $request): null|string;
-
-    public function name(): string;
 }
