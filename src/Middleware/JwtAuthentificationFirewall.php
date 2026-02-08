@@ -2,15 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware;
+namespace Tuupola\Middleware\Middleware;
 
 use Override;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Tuupola\Middleware\JwtAuthentication\NullUnAuthorizedHandler;
-use Tuupola\Middleware\JwtAuthentication\RuleInterface;
+use Tuupola\Middleware\Exception\NotAuthorized;
+use Tuupola\Middleware\JwtAuthenticationOption;
+use Tuupola\Middleware\Rule\RuleInterface;
+use Tuupola\Middleware\UnAuthorizedHandler\JwtAuthentificationUnAuthorizedHandler;
+use Tuupola\Middleware\UnAuthorizedHandler\NullUnAuthorizedHandler;
+
+use function array_all;
 
 final readonly class JwtAuthentificationFirewall implements MiddlewareInterface
 {
@@ -42,12 +47,6 @@ final readonly class JwtAuthentificationFirewall implements MiddlewareInterface
 
     private function shouldAuthenticate(ServerRequestInterface $request): bool
     {
-        foreach ($this->rules as $callable) {
-            if (! $callable($request)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($this->rules, static fn ($callable) => $callable($request));
     }
 }

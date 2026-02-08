@@ -6,7 +6,8 @@ namespace Tuupola\Middleware;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
-use Tuupola\Middleware\JwtAuthentication\FetchTokenMethod;
+use Tuupola\Middleware\Exception\TokenNotFound;
+use Tuupola\Middleware\FetchTokenMethod\FetchTokenMethod;
 
 use function sprintf;
 
@@ -33,9 +34,9 @@ final readonly class FetchToken
     public function __invoke(ServerRequestInterface $request): string
     {
         foreach ($this->fetchTokenMethods as $fetchTokenMethod) {
-            $token = self::produceNonEmptyString($fetchTokenMethod->__invoke($request));
+            $token = $fetchTokenMethod->__invoke($request);
 
-            if ($token !== null) {
+            if ($token !== '' && $token !== null) {
                 $this->logger->debug(sprintf('Using token from %s', $fetchTokenMethod->name()));
 
                 return $token;
@@ -46,11 +47,5 @@ final readonly class FetchToken
         $this->logger->debug('Token not found');
 
         throw TokenNotFound::create();
-    }
-
-    /** @return non-empty-string|null */
-    private static function produceNonEmptyString(string|null $value): string|null
-    {
-        return $value === '' || $value === null ? null : $value;
     }
 }

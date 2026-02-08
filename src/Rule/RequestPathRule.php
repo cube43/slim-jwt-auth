@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Middleware\Rule;
 
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
 
+use function array_any;
 use function array_filter;
 use function array_map;
 use function explode;
@@ -39,48 +40,26 @@ final readonly class RequestPathRule implements RuleInterface
     #[Override]
     public function __invoke(ServerRequestInterface $request): bool
     {
-        $uri = '/' . implode(
-            '/',
-            array_filter(explode('//', '/' . $request->getUri()->getPath())),
-        );
+        $uri = $this->cleanUri($request);
 
-        if ($this->shouldIgnoreAuthOnUri($uri)) {
+        if (array_any($this->ignoreAuthOnUri, fn ($ignoreAuthOnUri) => $this->match($ignoreAuthOnUri, $uri))) {
             return false;
         }
 
-        return $this->shouldBeAuthenticate($uri);
-    }
-
-    /**
-     * If request path is matches ignore should not authenticate.
-     */
-    private function shouldIgnoreAuthOnUri(string $uri): bool
-    {
-        foreach ($this->ignoreAuthOnUri as $ignoreAuthOnUri) {
-            if ($this->match($ignoreAuthOnUri, $uri)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Otherwise check if path matches and we should authenticate.
-     */
-    private function shouldBeAuthenticate(string $uri): bool
-    {
-        foreach ($this->mustBeAuthOnUri as $mustBeAuthOnUri) {
-            if ($this->match($mustBeAuthOnUri, $uri)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->mustBeAuthOnUri, fn ($mustBeAuthOnUri) => $this->match($mustBeAuthOnUri, $uri));
     }
 
     private function match(string $value, string $uri): bool
     {
         return ! ! preg_match('@^' . $value . '(/.*)?$@', $uri);
+    }
+
+    private function cleanUri(ServerRequestInterface $request): string
+    {
+        $exploded = explode('//', '/' . $request->getUri()->getPath());
+        $exploded = array_filter($exploded);
+        $imploded = implode('/', $exploded);
+
+        return '/' . $imploded;
     }
 }

@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Tuupola\Middleware;
 
 use Lcobucci\JWT\Signer\Key;
-use Tuupola\Middleware\JwtAuthentication\NullAfterHandler;
-use Tuupola\Middleware\JwtAuthentication\NullBeforeHandler;
+use Tuupola\Middleware\AfterHandler\JwtAuthentificationAfterHandler;
+use Tuupola\Middleware\AfterHandler\NullAfterHandler;
+use Tuupola\Middleware\BeforeHandler\JwtAuthentificationBeforeHandler;
+use Tuupola\Middleware\BeforeHandler\NullBeforeHandler;
+use Tuupola\Middleware\Security\AllowedInsecureHosts;
+use Tuupola\Middleware\Security\JwtAuthentificationSecurity;
 
 final readonly class JwtAuthenticationOption
 {

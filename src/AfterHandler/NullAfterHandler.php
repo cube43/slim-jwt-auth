@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Middleware\AfterHandler;
 
 use Lcobucci\JWT\Token\Plain;
 use Override;
 use Psr\Http\Message\ResponseInterface;
-use Tuupola\Middleware\JwtAuthentificationAfterHandler;
 
 final readonly class NullAfterHandler implements JwtAuthentificationAfterHandler
 {

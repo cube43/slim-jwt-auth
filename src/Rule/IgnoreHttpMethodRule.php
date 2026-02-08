@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Middleware\Rule;
 
 use Override;
 use Psr\Http\Message\ServerRequestInterface;

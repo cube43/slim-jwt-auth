@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Middleware\Security;
 
 use Psr\Http\Message\ServerRequestInterface;
 
-interface RuleInterface
+interface JwtAuthentificationSecurity
 {
     public function __invoke(ServerRequestInterface $request): bool;
 }

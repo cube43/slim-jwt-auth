@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware;
+namespace Tuupola\Middleware\Exception;
 
 use RuntimeException;
 use Throwable;

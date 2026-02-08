@@ -6,7 +6,7 @@ namespace Tuupola\Tests\Middleware\Functional;
 
 use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Tuupola\Middleware\JwtAuthentication\RequestPathRule;
+use Tuupola\Middleware\Rule\RequestPathRule;
 
 /** @psalm-suppress UnusedClass */
 final class RequestPathRuleTest extends TestCase

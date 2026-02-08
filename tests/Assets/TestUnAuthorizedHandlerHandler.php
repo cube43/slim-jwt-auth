@@ -8,7 +8,7 @@ use Override;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
-use Tuupola\Middleware\JwtAuthentificationUnAuthorizedHandler;
+use Tuupola\Middleware\UnAuthorizedHandler\JwtAuthentificationUnAuthorizedHandler;
 
 final readonly class TestUnAuthorizedHandlerHandler implements JwtAuthentificationUnAuthorizedHandler
 {

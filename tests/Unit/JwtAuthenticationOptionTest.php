@@ -6,11 +6,11 @@ namespace Tuupola\Tests\Middleware\Unit;
 
 use Lcobucci\JWT\Signer\Key;
 use PHPUnit\Framework\TestCase;
-use Tuupola\Middleware\AllowedInsecureHosts;
+use Tuupola\Middleware\AfterHandler\JwtAuthentificationAfterHandler;
+use Tuupola\Middleware\BeforeHandler\JwtAuthentificationBeforeHandler;
 use Tuupola\Middleware\JwtAuthenticationOption;
-use Tuupola\Middleware\JwtAuthentificationAfterHandler;
-use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
-use Tuupola\Middleware\NullSecurity;
+use Tuupola\Middleware\Security\AllowedInsecureHosts;
+use Tuupola\Middleware\Security\JwtAuthentificationSecurity;
 
 /** @psalm-suppress UnusedClass */
 final class JwtAuthenticationOptionTest extends TestCase
@@ -27,15 +27,16 @@ final class JwtAuthenticationOptionTest extends TestCase
         $newSecret = self::createMock(Key::class);
         $before    = self::createMock(JwtAuthentificationBeforeHandler::class);
         $after     = self::createMock(JwtAuthentificationAfterHandler::class);
+        $security  = self::createMock(JwtAuthentificationSecurity::class);
 
         $sUT = $sUT->withSecret($newSecret);
         $sUT = $sUT->withTokenAttributeName('toto');
-        $sUT = $sUT->withSecurity(new NullSecurity());
+        $sUT = $sUT->withSecurity($security);
         $sUT = $sUT->withBeforeHandleRequestWhenTokenAvailable($before);
         $sUT = $sUT->withAfterHandleRequestWhenTokenAvailable($after);
 
         self::assertSame($newSecret, $sUT->secret);
-        self::assertInstanceOf(NullSecurity::class, $sUT->security);
+        self::assertSame($security, $sUT->security);
         self::assertSame('toto', $sUT->tokenAttributeName);
         self::assertSame($before, $sUT->beforeHandleRequestWhenTokenAvailable);
         self::assertSame($after, $sUT->afterHandleRequestWhenTokenAvailable);

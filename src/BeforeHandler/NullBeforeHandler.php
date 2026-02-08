@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Middleware\BeforeHandler;
 
 use Lcobucci\JWT\Token\Plain;
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
-use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
 
 final readonly class NullBeforeHandler implements JwtAuthentificationBeforeHandler
 {

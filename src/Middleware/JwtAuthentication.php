@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware;
+namespace Tuupola\Middleware\Middleware;
 
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Token\Parser;
@@ -14,7 +14,12 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
-use Tuupola\Middleware\JwtAuthentication\FetchTokenMethod;
+use Tuupola\Middleware\DecodeToken;
+use Tuupola\Middleware\Exception\TokenNotFound;
+use Tuupola\Middleware\Exception\UnableToDecodeToken;
+use Tuupola\Middleware\FetchToken;
+use Tuupola\Middleware\FetchTokenMethod\FetchTokenMethod;
+use Tuupola\Middleware\JwtAuthenticationOption;
 
 use function sprintf;
 use function strtoupper;
@@ -63,14 +68,9 @@ final readonly class JwtAuthentication implements MiddlewareInterface
         }
 
         try {
-            $token = $this->fetchToken->__invoke($request);
-        } catch (TokenNotFound) {
-            return $handler->handle($request);
-        }
-
-        try {
+            $token           = $this->fetchToken->__invoke($request);
             $jwtDecodedToken = $this->decodeToken->__invoke($token);
-        } catch (UnableToDecodeToken) {
+        } catch (TokenNotFound | UnableToDecodeToken) {
             return $handler->handle($request);
         }
 

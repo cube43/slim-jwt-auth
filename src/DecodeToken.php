@@ -9,6 +9,9 @@ use Lcobucci\JWT\Parser as ParserInterface;
 use Lcobucci\JWT\Token\Plain;
 use Psr\Log\LoggerInterface;
 use Throwable;
+use Tuupola\Middleware\Exception\TokenExpired;
+use Tuupola\Middleware\Exception\TokenNotSigned;
+use Tuupola\Middleware\Exception\UnableToDecodeToken;
 
 final readonly class DecodeToken
 {

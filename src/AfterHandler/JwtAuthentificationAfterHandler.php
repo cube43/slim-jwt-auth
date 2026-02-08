@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware;
+namespace Tuupola\Middleware\AfterHandler;
 
 use Lcobucci\JWT\Token\Plain;
 use Psr\Http\Message\ResponseInterface;

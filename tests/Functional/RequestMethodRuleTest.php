@@ -6,7 +6,7 @@ namespace Tests\Middleware\Functional;
 
 use Laminas\Diactoros\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Tuupola\Middleware\JwtAuthentication\IgnoreHttpMethodRule;
+use Tuupola\Middleware\Rule\IgnoreHttpMethodRule;
 
 /** @psalm-suppress UnusedClass */
 final class RequestMethodRuleTest extends TestCase

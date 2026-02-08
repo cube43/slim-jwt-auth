@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tuupola\Middleware\JwtAuthentication;
+namespace Tuupola\Middleware\FetchTokenMethod;
 
 use Psr\Http\Message\ServerRequestInterface;
 

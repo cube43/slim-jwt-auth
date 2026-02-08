@@ -7,7 +7,7 @@ namespace Tuupola\Tests\Middleware\Assets;
 use Lcobucci\JWT\Token\Plain;
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
-use Tuupola\Middleware\JwtAuthentificationBeforeHandler;
+use Tuupola\Middleware\BeforeHandler\JwtAuthentificationBeforeHandler;
 
 final readonly class TestBeforeHandlerHandler implements JwtAuthentificationBeforeHandler
 {
