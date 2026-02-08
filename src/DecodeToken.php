@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Lcobucci\JWT\Parser as ParserInterface;
 use Lcobucci\JWT\Token\Plain;
 use Psr\Log\LoggerInterface;
+use SensitiveParameter;
 use Throwable;
 use Tuupola\Middleware\Exception\TokenExpired;
 use Tuupola\Middleware\Exception\TokenNotSigned;
@@ -33,7 +34,8 @@ final readonly class DecodeToken
      *
      * @throw UnableToDecodeToken
      */
-    public function __invoke(string $token): Plain
+    public function __invoke(#[SensitiveParameter]
+    string $token): Plain
     {
         try {
             $tokenDecoded = $this->parser->parse($token);

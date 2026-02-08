@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tuupola\Middleware;
 
 use Lcobucci\JWT\Signer\Key;
+use SensitiveParameter;
 use Tuupola\Middleware\AfterHandler\JwtAuthentificationAfterHandler;
 use Tuupola\Middleware\AfterHandler\NullAfterHandler;
 use Tuupola\Middleware\BeforeHandler\JwtAuthentificationBeforeHandler;
@@ -15,8 +16,10 @@ use Tuupola\Middleware\Security\JwtAuthentificationSecurity;
 final readonly class JwtAuthenticationOption
 {
     private function __construct(
+        #[SensitiveParameter]
         public Key $secret,
         public JwtAuthentificationSecurity $security,
+        #[SensitiveParameter]
         public string $tokenAttributeName,
         public JwtAuthentificationBeforeHandler $beforeHandleRequestWhenTokenAvailable,
         public JwtAuthentificationAfterHandler $afterHandleRequestWhenTokenAvailable,
@@ -37,7 +40,8 @@ final readonly class JwtAuthenticationOption
     /**
      * Set the tokenAttributeName name used to attach decoded token to request.
      */
-    public function withTokenAttributeName(string $tokenAttributeName): self
+    public function withTokenAttributeName(#[SensitiveParameter]
+    string $tokenAttributeName): self
     {
         return new self(
             $this->secret,
@@ -93,7 +97,8 @@ final readonly class JwtAuthenticationOption
     /**
      * Set the secret key.
      */
-    public function withSecret(Key $secret): self
+    public function withSecret(#[SensitiveParameter]
+    Key $secret): self
     {
         return new self(
             $secret,

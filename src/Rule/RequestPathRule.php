@@ -6,6 +6,7 @@ namespace Tuupola\Middleware\Rule;
 
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
+use SensitiveParameter;
 
 use function array_any;
 use function array_filter;
@@ -30,7 +31,9 @@ final readonly class RequestPathRule implements RuleInterface
      * @param string[] $ignoreAuthOnUri
      */
     public function __construct(
+        #[SensitiveParameter]
         array $mustBeAuthOnUri = ['/'],
+        #[SensitiveParameter]
         array $ignoreAuthOnUri = []
     ) {
         $this->mustBeAuthOnUri = array_map(static fn (string $mustBeAuthOnUri): string => rtrim($mustBeAuthOnUri, '/'), $mustBeAuthOnUri);

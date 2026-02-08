@@ -6,6 +6,7 @@ namespace Tuupola\Middleware\Rule;
 
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
+use SensitiveParameter;
 
 use function in_array;
 
@@ -15,7 +16,8 @@ use function in_array;
 final readonly class IgnoreHttpMethodRule implements RuleInterface
 {
     /** @param string[] $ignoreHttpMethod */
-    public function __construct(private array $ignoreHttpMethod = ['OPTIONS'])
+    public function __construct(#[SensitiveParameter]
+    private array $ignoreHttpMethod = ['OPTIONS'])
     {
     }
 

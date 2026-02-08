@@ -6,29 +6,28 @@ namespace Tuupola\Middleware\FetchTokenMethod;
 
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
-
-use function array_key_exists;
-use function preg_match;
+use SensitiveParameter;
 
 final readonly class FetchTokenFormHeader implements FetchTokenMethod
 {
+    private PregMatchToken $pregMatchToken;
+
     /**
      * @param non-empty-string $header
      * @param non-empty-string $regexp
      */
     public function __construct(
+        #[SensitiveParameter]
         private string $header = 'Authorization',
-        private string $regexp = '/Bearer\s+(.*)$/i',
+        #[SensitiveParameter]
+        string $regexp = '/Bearer\s+(.*)$/i',
     ) {
+        $this->pregMatchToken = new PregMatchToken($regexp);
     }
 
     #[Override]
     public function __invoke(ServerRequestInterface $request): null|string
     {
-        $header  = $request->getHeaderLine($this->header);
-        $matches = [];
-        preg_match($this->regexp, $header, $matches);
-
-        return array_key_exists(1, $matches) ? $matches[1] : null;
+        return $this->pregMatchToken->__invoke($request->getHeaderLine($this->header));
     }
 }
